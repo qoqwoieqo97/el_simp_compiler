@@ -396,8 +396,8 @@ bool Lexer::lexer_line(std::string line_string)
 	else if (isThat_func_definition(line_string)) return lexer_func_definition(line_string);
 	else if (isThat_func(line_string)) return lexer_func(line_string);
 	else if (isThat_var_definition(line_string)) return lexer_var_definition(line_string);
-	else if (keyCodeC(line_string, "//") || keyCodeC(line_string, "//") || keyCodeC(line_string, "empty") || keyCodeC(line_string,"")) return true;
 	else if (keyCodeC(line_string, "#lexer")) return lexer_command(line_string);
+	else if (keyCodeC(line_string, "//") || keyCodeC(line_string, "//") || keyCodeC(line_string, "empty") || keyCodeC(line_string,"")) return true;
 	else { error_string = "That command is unknown: " + line_string; return false; }
 }
 
