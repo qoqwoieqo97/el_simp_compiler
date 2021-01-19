@@ -32,6 +32,10 @@ struct Function
 	std::string gstring();
 };
 
+bool keyCodeC(std::string s, std::string control);
+int hmint(std::string s, std::string control);
+std::vector<std::string> cut(std::string string, std::string cutt);
+
 class Lexer
 {
 private:
@@ -62,17 +66,17 @@ public:
 	bool lexer_bool(std::string bool_segment);
 
 	/* Variable Definition */
-	bool isThat_var_definition(std::string testsegment);
+	bool static isThat_var_definition(std::string testsegment);
 	bool lexer_var_definition(std::string var_segment);
 
 	/* Function Definition */
 	Variable lexer_parameter(std::string param);
-	bool isThat_func_definition(std::string testsegment);
+	bool static isThat_func_definition(std::string testsegment);
 	bool lexer_func_definition(std::string func_segment);
 
 	/* Function */
 	bool types_equal(std::vector<Variable> v, std::vector<Variable> v2);
-	bool isThat_func(std::string testsegment);
+	bool static isThat_func(std::string testsegment);
 	bool weHaveThat_func(std::string name, std::string param);
 	bool lexer_func(std::string func_segment);
 

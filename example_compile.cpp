@@ -1,0 +1,1 @@
+std::string version = "0.0.1";void print (string p){std::cout << p; }void printf (string p){std::cout << p << std::endl; }void version(){std::cout << version << std::endl; }void main(){print("Hello World");}

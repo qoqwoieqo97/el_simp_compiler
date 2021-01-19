@@ -248,56 +248,58 @@ bool Lexer::isThat_func(std::string test_segment)
 Variable Lexer::lexer_parameter(std::string param)
 {
 	std::vector<std::string> cutted = cut(param, " ");
-	if (cutted.size() > 2) { error_string = "Function parameter syntax is wrong."; return Variable(Types::NONE, "", ""); }
+	if (cutted.size() != 2) { error_string = "Function parameter syntax is wrong."; return Variable(Types::NONE, "", ""); }
 	return Variable(stt(cutted[0]), "", cutted[1]);
 }
 
 bool Lexer::lexer_func_definition(std::string func_segment)
 {
-	std::string function_name, in_function, function_options, function_params; int counter = 0;
+	std::string function_name, in_function, function_options, function_params; int counter = 0; bool p_start = false, p_end = false, f_end = false;
 	for (int i = 0; i < func_segment.size(); i++)
 	{
-		if (counter == 1) for (; i < func_segment.size(); i++)
+		if (counter == 0)
 		{
-			//if (func_segment[i] == ' ');
-			if (func_segment[i] == ')') { counter = 2; break; }
+			if (func_segment[i] == '(') { counter = 1; p_start = true; }
+			else if (func_segment[i] == ' ');
+			else function_name += func_segment[i];
+		}
+		else if (counter == 1)
+		{
+			if (func_segment[i] == ')') { counter = 2; p_end = true; }
 			else function_params += func_segment[i];
 		}
-		else if (func_segment[i] == ' ');
-		else if (counter == 0 && func_segment[i] == '(') counter = 1;
-		else if (counter == 0) function_name += func_segment[i];
-		else if (counter == 2) for (; i < func_segment.size(); i++)
+		else if (counter == 2)
 		{
-			if (func_segment[i] == ' ');
-			else if (func_segment[i] == ':') { counter = 3; break; }
+			if (func_segment[i] == ':') { counter = 3; f_end = true; }
 			else function_options += func_segment[i];
 		}
 		else if (counter == 3)
 		{
-			if (func_segment[i] == ' ');
-			else in_function += func_segment[i];
+			in_function += func_segment[i];
 		}
 	}
 
-	if (counter == 0) { error_string = "Parameter starting error."; return false; }
-	else if (counter == 1) { error_string = "Parameter ending error."; return false; }
-	else if (counter == 2) { error_string = "Function options is not ended."; return false; }
+	if (!p_start) { error_string = "Parameter starting error."; return false; }
+	else if (!p_end) { error_string = "Parameter ending error."; return false; }
+	else if (!f_end) { error_string = "Function options is not ended."; return false; }
 	else if (in_function == "") { error_string = "In Function can't be empty."; return false; }
 
 	std::vector<Variable> params;
-	/* Parameter */std::string f = "";
-	for (int i = 0; i < function_params.size(); i++)
+	if (function_params != "")
 	{
-		if (function_params[i] == ',') 
+		/* Parameter */std::string f = "";
+		for (int i = 0; i < function_params.size(); i++)
 		{
-			if (lexer_parameter(f).type != Types::NONE) { params.push_back(lexer_parameter(f)); f = ""; }
-			else return false;
+			if (function_params[i] == ',')
+			{
+				if (lexer_parameter(f).type != Types::NONE) { params.push_back(lexer_parameter(f)); f = ""; }
+				else return false;
+			}
+			else f += function_params[i];
 		}
-		else f += function_params[i];
+		if (lexer_parameter(f).type != Types::NONE) { params.push_back(lexer_parameter(f)); f = ""; }
+		else return false;
 	}
-
-	if (lexer_parameter(f).type != Types::NONE) { params.push_back(lexer_parameter(f)); f = ""; }
-	else return false;
 
 	addFunction(Function(function_name, params));
 	return lexer_line(in_function);
@@ -305,12 +307,11 @@ bool Lexer::lexer_func_definition(std::string func_segment)
 
 bool Lexer::isThat_func_definition(std::string test_segment)
 {
-	int counter = 0;
+	int counter = 0; char c[3] = { '(',')',':' };
 	for (int i = 1; i < test_segment.size(); i++)
 	{
-		if (test_segment[i] == '(' && counter == 0) counter = 1;
-		else if (test_segment[i] == ')' && counter == 1) counter = 2;
-		else if (test_segment[i] == ':' && counter == 2) return true;
+		if (test_segment[i] == c[counter]) counter++;
+		if (counter > 2) return true;
 	}
 	return false;
 }
@@ -389,7 +390,7 @@ bool Lexer::lexer_command(std::string command_segment)
 
 bool Lexer::lexer_line(std::string line_string)
 {
-	if (keyCodeC(line_string, "extern")) return lexer_extern(line_string);
+	if (keyCodeC(line_string, "extern") || keyCodeC(line_string, " extern")) return lexer_extern(line_string);
 	else if (hmint(line_string, ";") > 0 && hmint(line_string, "extern ") == 0) { for (auto a : cut(line_string, ";")) if (!lexer_line(a)) return false; return true; }
 	else if (keyCodeC(line_string, "if")) return lexer_if(gat(line_string, 2));
 	else if (keyCodeC(line_string, "while")) return lexer_if(gat(line_string, 5));
@@ -397,7 +398,7 @@ bool Lexer::lexer_line(std::string line_string)
 	else if (isThat_func(line_string)) return lexer_func(line_string);
 	else if (isThat_var_definition(line_string)) return lexer_var_definition(line_string);
 	else if (keyCodeC(line_string, "#lexer")) return lexer_command(line_string);
-	else if (keyCodeC(line_string, "//") || keyCodeC(line_string, "//") || keyCodeC(line_string, "empty") || keyCodeC(line_string,"")) return true;
+	else if (keyCodeC(line_string, "//") || keyCodeC(line_string, "//") || keyCodeC(line_string, "empty")) return true;
 	else { error_string = "That command is unknown: " + line_string; return false; }
 }
 
