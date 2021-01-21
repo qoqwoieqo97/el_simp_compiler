@@ -48,6 +48,7 @@ std::string g(Types a)
 	if (a == Types::STRING) return "string";
 	else if (a == Types::INTEGER) return "integer";
 	else if (a == Types::FLOAT) return "float";
+	else if (a == Types::VOID) return "void";
 	else return "none";
 }
 
@@ -56,6 +57,7 @@ Types stt(std::string string)
 	if (string == "string") return Types::STRING;
 	else if (string == "integer" || string == "int") return Types::INTEGER;
 	else if (string == "float") return Types::FLOAT;
+	else if (string == "void") return Types::VOID;
 	else return Types::NONE;
 }
 
@@ -104,7 +106,7 @@ std::string Function::gstring()
 
 Lexer::Lexer(std::string filePath)
 	:
-	file(filePath) { }
+	file(filePath),in_func("", Variable(Types::NONE, "", ""),Types::NONE) { }
 Lexer::~Lexer() { file.close(); }
 
 
@@ -177,16 +179,29 @@ Types Lexer::detectType(std::string type_segment)
 	if (type_segment[0] == '"' && type_segment[type_segment.size() - 1] == '"') return Types::STRING;
 	else if (nod > 0 && nod < 0) return Types::FLOAT;
 	else if (isNumber(type_segment)) return Types::INTEGER;
-	else return Types::NONE;
+	else
+	{
+		for (auto var : vars) if (var.name == type_segment) return var.type;
+		return Types::NONE;
+	}
 }
 
 std::vector<Variable> Lexer::lexer_type(std::string type_segment)
 {
+	if (type_segment == "")
+	{
+		std::vector<Variable> empty;
+		return empty;
+	}
 	std::vector<std::string> type_segments = cut(type_segment, ","); std::vector<Variable> wllReturn;
 	for (std::string sgmnt : type_segments)
 	{
 		bool finded = false;
 		for (Variable a : vars)
+		{
+			if (sgmnt == a.name) { wllReturn.push_back(Variable(a.type, a.value, a.name)); finded = true; break; }
+		}
+		for (Variable a : inFunc_vars)
 		{
 			if (sgmnt == a.name) { wllReturn.push_back(Variable(a.type, a.value, a.name)); finded = true; break; }
 		}
@@ -214,6 +229,7 @@ bool Lexer::weHaveThat_func(std::string name, std::string param)
 	for (auto func : funcs) if (name == func.name) {
 		if (types_equal(func.param, lexer_type(param))) return true;
 		else { error_string = name + "(" + func.gstring() + ") named function's paramaters is wrong."; return false; } }
+
 	
 	error_string = "Can't found " + name +" named function";
 	return false;
@@ -270,7 +286,8 @@ bool Lexer::lexer_func_definition(std::string func_segment)
 		}
 		else if (counter == 2)
 		{
-			if (func_segment[i] == ':') { counter = 3; f_end = true; }
+			if (func_segment[i] == ':') { counter = 3; i++; f_end = true; }
+			else if (func_segment[i] == ' ');
 			else function_options += func_segment[i];
 		}
 		else if (counter == 3)
@@ -301,7 +318,21 @@ bool Lexer::lexer_func_definition(std::string func_segment)
 		else return false;
 	}
 
-	addFunction(Function(function_name, params));
+	if (function_options != "int" && function_options != "string" && function_options != "float" && function_options!="void")
+	{
+		error_string = "Parameter isn't excepted"; return false;
+	}
+	if (function_name == "main")
+	{
+		if (isDefinedMain)
+		{
+			error_string = "There can be only 1 main defining. main(): or #compiler main.  You defined second main with main():";
+			return false;
+		}
+		isDefinedMain = true;
+	}
+	inFunc_vars = params; in_func = Function(function_name, params, stt(function_options));
+	addFunction(Function(function_name, params,stt(function_options)));
 	return lexer_line(in_function);
 }
 
@@ -316,9 +347,29 @@ bool Lexer::isThat_func_definition(std::string test_segment)
 	return false;
 }
 
+bool Lexer::lexer_return(std::string return_segment)
+{
+	std::string return_var;
+	for (int i = 7; i < return_segment.size(); i++)
+	{
+		return_var += return_segment[i];
+	}
+	if (detectType(return_var) == in_func.return_type)return true;
+	else 
+	{
+		if (isDefinedMain) return true;
+		else if (in_func.return_type == Types::NONE)
+		{
+			error_string = "U are not in the function";
+		}
+		else error_string = "Function return type is invalid, should be " + g(in_func.return_type);
+		return false;
+	}
+}
+
 bool Lexer::isThat_var_definition(std::string testsegment)
 {
-	return keyCodeC(testsegment, "int ") || keyCodeC(testsegment, "string ") || keyCodeC(testsegment, "float ");
+	return hmint(testsegment, "int")>0 || hmint(testsegment, "string")>0 || hmint(testsegment, "float")>0;
 }
 
 bool Lexer::lexer_var_definition(std::string var_segment)
@@ -388,17 +439,39 @@ bool Lexer::lexer_command(std::string command_segment)
 	return cr;
 }
 
+bool Lexer::lexer_compiler_command(std::string command_segment)
+{
+	std::string command;
+	for (int i = 10; i < command_segment.size(); i++)
+	{
+		command += command_segment[i];
+	}
+	if (command == "main")
+	{
+		if (isDefinedMain)
+		{
+			error_string = "There can be only 1 main defining. main(): or #compiler main. You defined second main with #compiler";
+			return false;
+		}
+		else { isDefinedMain = true; return true; }
+	}
+	error_string = "What is that compiler command:" + command;
+	return false;
+}
+
 bool Lexer::lexer_line(std::string line_string)
 {
-	if (keyCodeC(line_string, "extern") || keyCodeC(line_string, " extern")) return lexer_extern(line_string);
-	else if (hmint(line_string, ";") > 0 && hmint(line_string, "extern ") == 0) { for (auto a : cut(line_string, ";")) if (!lexer_line(a)) return false; return true; }
+	if (keyCodeC(line_string, "//") || keyCodeC(line_string, "empty") || line_string == "") return true;
+	else if (keyCodeC(line_string, "#lexer")) return lexer_command(line_string);
+	else if (keyCodeC(line_string, "#compiler")) return lexer_compiler_command(line_string);
+	else if (keyCodeC(line_string, "extern") || keyCodeC(line_string, " extern")) return lexer_extern(line_string);
+	else if (hmint(line_string, ";") > 0 && hmint(line_string, "extern ") == 0 && !isThat_func_definition(line_string)) { for (auto a : cut(line_string, ";")) if (!lexer_line(a)) return false; return true; }
 	else if (keyCodeC(line_string, "if")) return lexer_if(gat(line_string, 2));
 	else if (keyCodeC(line_string, "while")) return lexer_if(gat(line_string, 5));
+	else if (keyCodeC(line_string, "return")) return lexer_return(line_string);
 	else if (isThat_func_definition(line_string)) return lexer_func_definition(line_string);
 	else if (isThat_func(line_string)) return lexer_func(line_string);
 	else if (isThat_var_definition(line_string)) return lexer_var_definition(line_string);
-	else if (keyCodeC(line_string, "#lexer")) return lexer_command(line_string);
-	else if (keyCodeC(line_string, "//") || keyCodeC(line_string, "//") || keyCodeC(line_string, "empty")) return true;
 	else { error_string = "That command is unknown: " + line_string; return false; }
 }
 
@@ -408,6 +481,7 @@ bool Lexer::lexer()
 	while (std::getline(file, line_string))
 	{
 		lineCounter++;
+		std::vector<Variable> n; inFunc_vars = n; in_func = Function("", Variable(Types::NONE, "", ""),Types::NONE);
 		if (!lexer_line(line_string)) { error_line = lineCounter; return false; }
 	}
 	return true;

@@ -44,6 +44,7 @@ std::string Compiler::compile_function_define(std::string segment)
 		else if (counter == 2)
 		{
 			if (segment[i] == ':') { counter++; i++; }
+			else if (segment[i] == ' ');
 			else options += segment[i];
 		}
 		else if (counter == 3)
@@ -51,10 +52,9 @@ std::string Compiler::compile_function_define(std::string segment)
 			in += segment[i];
 		}
 	}
+	std::string return_type = options == "string" ? "std::string" : options;
 
-	std::string returner;
-	returner = "void " + name + "(" + parameters + "){" + compile_line(in) + "}";
-	return returner;
+	return return_type + " " + name + "(" + parameters + "){" + compile_line(in) + "}";
 }
 
 std::string Compiler::compile_func(std::string line)
@@ -108,13 +108,48 @@ std::string Compiler::compile_var_define(std::string line)
 	else return "";
 }
 
+std::string Compiler::compile_libpp(std::string libpp_segment)
+{
+	bool inParam = false; std::string param;
+	for (char c : libpp_segment)
+	{
+		if (c == '(') inParam = true;
+		else if (c == ')') break;
+		else if (inParam) param += c;
+	}
+	return "#include \"" + Lexer::getValue(param, Types::STRING) + "\"\n";
+}
+
+std::string Compiler::compile_return(std::string return_segment)
+{
+	return return_segment+';';
+}
+std::string Compiler::compile_command(std::string compiler_segment)
+{
+	std::string command;
+	for (int i = 10; i < compiler_segment.size(); i++)
+	{
+		command += compiler_segment[i];
+	}
+	if (command == "main")
+	{
+		isItIn = true;
+		return "int main(){";
+	}
+	return "";
+}
+
 std::string Compiler::compile_line(std::string line)
 {
 	std::string returner;
-	if (hmint(line, "extern") == 0 && hmint(line, ";") > 0) for (std::string cutted : cut(line, ";")) returner += compile_line(cutted);
+	if (keyCodeC(line, "//") || line == "");
+	else if (hmint(line, "extern") == 0 && hmint(line, ";") > 0 && !Lexer::isThat_func_definition(line)) for (std::string cutted : cut(line, ";")) returner += compile_line(cutted);
 	else if (keyCodeC(line, "if")) returner = work_brackets("if", line);
 	else if (keyCodeC(line, "while")) returner = work_brackets("while", line);
 	else if (keyCodeC(line, "extern")) returner = compile_extern(line);
+	else if (keyCodeC(line, "lib++")) returner = compile_libpp(line);
+	else if (keyCodeC(line, "return")) returner = compile_return(line);
+	else if (keyCodeC(line, "#compiler")) returner = compile_command(line);
 	else if (Lexer::isThat_func_definition(line)) returner = compile_function_define(line);
 	else if (Lexer::isThat_func(line)) returner = compile_func(line);
 	else if (Lexer::isThat_var_definition(line)) returner = compile_var_define(line);
@@ -125,5 +160,6 @@ void Compiler::compile(std::string ct)
 {
 	std::fstream compiled_file(ct); std::string line;
 	while (std::getline(file, line)) compiled_file << compile_line(line);
+	if (isItIn)compiled_file << '}';
 	std::cout << "Compile ended. Converted to cpp at " << ct << std::endl;
 }

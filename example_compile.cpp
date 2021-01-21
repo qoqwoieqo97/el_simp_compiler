@@ -1,1 +1,2 @@
-std::string version = "0.0.1";void print (string p){std::cout << p; }void printf (string p){std::cout << p << std::endl; }void version(){std::cout << version << std::endl; }void main(){print("Hello World");}
+#include "iostream"
+void print(string thing){std::cout << thing; }void printi (int thing){std::cout << thing; }void printf(string thing){std::cout << thing << std::endl; }void printfi(int thing){std::cout << thing << std::endl; }void endl(){std::cout << std::endl; }std::string s;void getch(){std::cin >> s; }void inc(int &num){num++; }void plus(int &num,int in){num+=in; }int main(){endl();getch();print(s);int health = 0;plus(health,10);printi(health);if (true){return 0;}endl();}

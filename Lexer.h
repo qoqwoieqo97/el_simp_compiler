@@ -6,7 +6,7 @@
 
 enum class Types
 {
-	STRING, INTEGER, FLOAT, NONE
+	STRING, INTEGER, FLOAT, VOID, NONE
 };
 
 struct Variable
@@ -20,14 +20,14 @@ struct Variable
 
 struct Function
 {
-	std::vector<Variable> param; std::string name;
-	Function(std::string nm, Variable firstParam)
+	std::vector<Variable> param; std::string name; Types return_type;
+	Function(std::string nm, Variable firstParam, Types return_t)
 	{
-		name = nm; param.push_back(firstParam);
+		name = nm; param.push_back(firstParam); return_type = return_t;
 	}
-	Function(std::string nm, std::vector<Variable> params)
+	Function(std::string nm, std::vector<Variable> params,Types return_t)
 	{
-		name = nm; param = params;
+		name = nm; param = params; return_type = return_t;
 	}
 	std::string gstring();
 };
@@ -40,7 +40,7 @@ class Lexer
 {
 private:
 	std::fstream file; std::string error_string = "No error excepted."; int error_line = 0;
-	std::vector<Function> funcs; std::vector<Variable> vars;
+	std::vector<Function> funcs; std::vector<Variable> vars, inFunc_vars; Function in_func; bool isDefinedMain = false;
 public:
 	/// <summary>
 	/// Simple Generator
@@ -56,7 +56,7 @@ public:
 
 	/* Get Type */
 	Types detectType(std::string type_segment);
-	std::string getValue(std::string type_segment, Types type);
+	std::string static getValue(std::string type_segment, Types type);
 	std::vector<Variable> lexer_type(std::string type_segment);
 
 	/* Extern Lexer */
@@ -80,11 +80,15 @@ public:
 	bool weHaveThat_func(std::string name, std::string param);
 	bool lexer_func(std::string func_segment);
 
+	/* Return */
+	bool lexer_return(std::string return_segment);
+
 	/* IF Lexer */
 	bool lexer_if(std::string ifsegment);
 
 	/* Lexer Command Lexer like #lexer printvars */
 	bool lexer_command(std::string command_segment);
+	bool lexer_compiler_command(std::string command_segment);
 
 	/* Lexer for one Line */
 	bool lexer_line(std::string line_string);
