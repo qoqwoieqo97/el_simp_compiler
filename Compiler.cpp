@@ -1,6 +1,9 @@
 #include "Compiler.h"
 
-Compiler::Compiler(std::string path) : file(path) {}
+Compiler::Compiler(std::string path)
+{
+	to_compile.open(path,std::ios::app);
+}
 
 std::string Compiler::work_brackets(std::string key, std::string line)
 {
@@ -73,6 +76,12 @@ std::string Compiler::compile_func(std::string line)
 			else parameter += line[i];
 		}
 	}
+	/*std::string resultPar;
+	for (int i = 0; i < parameter.size(); i++)
+	{
+		if (stringController(parameter, "string", i)) resultPar += "std::string";
+		else resultPar += parameter;
+	}*/
 	return name + "(" + parameter + ");";
 }
 
@@ -99,6 +108,11 @@ std::string Compiler::compile_var_define(std::string line)
 	{
 		for (int i = 7; i < line.size(); i++) later += line[i];
 		return "std::string " + later + ";";
+	}
+	else if (keyCodeC(line, "drawning"))
+	{
+		for (int i = 8; i < line.size(); i++) later += line[i];
+		return "sf::Sprite " + later + ";";
 	}
 	else if (keyCodeC(line, "float"))
 	{
@@ -139,16 +153,30 @@ std::string Compiler::compile_command(std::string compiler_segment)
 	return "";
 }
 
+std::string Compiler::compile_load(std::string cs)
+{
+	std::string path = "";
+	for (int i = 5; i < cs.size(); i++)
+	{
+		path += cs[i];
+	}
+
+
+	compiler_while(path);
+	return "/* loaded " + path + " here */";
+}
+
 std::string Compiler::compile_line(std::string line)
 {
 	std::string returner;
 	if (keyCodeC(line, "//") || line == "");
-	else if (hmint(line, "extern") == 0 && hmint(line, ";") > 0 && !Lexer::isThat_func_definition(line)) for (std::string cutted : cut(line, ";")) returner += compile_line(cutted);
+	else if (hmint(line, "extern") == 0 && keyCodeC(line,"while") == false && hmint(line, ";") > 0 && !Lexer::isThat_func_definition(line)) for (std::string cutted : cut(line, ";")) returner += compile_line(cutted);
 	else if (keyCodeC(line, "if")) returner = work_brackets("if", line);
 	else if (keyCodeC(line, "while")) returner = work_brackets("while", line);
 	else if (keyCodeC(line, "extern")) returner = compile_extern(line);
 	else if (keyCodeC(line, "lib++")) returner = compile_libpp(line);
 	else if (keyCodeC(line, "return")) returner = compile_return(line);
+	else if (keyCodeC(line, "load")) returner = compile_load(line);
 	else if (keyCodeC(line, "#compiler")) returner = compile_command(line);
 	else if (Lexer::isThat_func_definition(line)) returner = compile_function_define(line);
 	else if (Lexer::isThat_func(line)) returner = compile_func(line);
@@ -156,10 +184,16 @@ std::string Compiler::compile_line(std::string line)
 	return returner;
 }
 
-void Compiler::compile(std::string ct)
+void Compiler::compiler_while(std::string rp)
 {
-	std::fstream compiled_file(ct); std::string line;
-	while (std::getline(file, line)) compiled_file << compile_line(line);
-	if (isItIn)compiled_file << '}';
-	std::cout << "Compile ended. Converted to cpp at " << ct << std::endl;
+	std::string line;
+	std::fstream read_file(rp);
+	while (std::getline(read_file, line)) to_compile << compile_line(line);
+	if (isItIn)to_compile << '}';
+}
+
+void Compiler::main_compile(std::string rp)
+{
+	compiler_while(rp);
+	std::cout << "Compile end" << std::endl;
 }

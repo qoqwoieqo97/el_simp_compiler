@@ -6,7 +6,7 @@
 
 enum class Types
 {
-	STRING, INTEGER, FLOAT, VOID, NONE
+	STRING, DRAWNING, INTEGER, FLOAT, VOID, NONE
 };
 
 struct Variable
@@ -29,25 +29,29 @@ struct Function
 	{
 		name = nm; param = params; return_type = return_t;
 	}
+	Function(std::string nm, Types return_t)
+	{
+		name = nm; return_type = return_t;
+	}
 	std::string gstring();
 };
 
 bool keyCodeC(std::string s, std::string control);
 int hmint(std::string s, std::string control);
 std::vector<std::string> cut(std::string string, std::string cutt);
+bool stringController(std::string s, std::string control, int& i);
 
 class Lexer
 {
 private:
-	std::fstream file; std::string error_string = "No error excepted."; int error_line = 0;
+	std::string error_string = "No error excepted.", error_file = "No file excepted"; int error_line = 0;
 	std::vector<Function> funcs; std::vector<Variable> vars, inFunc_vars; Function in_func; bool isDefinedMain = false;
 public:
 	/// <summary>
 	/// Simple Generator
 	/// </summary>
 	/// <param name="filePath"> File Path </param>
-	Lexer(std::string filePath);
-	~Lexer();
+	Lexer();
 
 	/* Add function */
 	void addFunction(Function func) { funcs.push_back(func); }
@@ -90,15 +94,19 @@ public:
 	bool lexer_command(std::string command_segment);
 	bool lexer_compiler_command(std::string command_segment);
 
+	bool lexer_load(std::string command_segment);
+
 	/* Lexer for one Line */
 	bool lexer_line(std::string line_string);
 
 	/* Simple Lexer While */
-	bool lexer();
+	bool lexer(std::string file_path);
 
 	/* Get error string. So that function will be return that std::string error_string at privates */
 	std::string getError();
 
 	/* If error caught that will be return error line. Or return 0 */
 	int getLine();
+
+	std::string get_file();
 };

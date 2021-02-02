@@ -48,6 +48,7 @@ std::string g(Types a)
 	if (a == Types::STRING) return "string";
 	else if (a == Types::INTEGER) return "integer";
 	else if (a == Types::FLOAT) return "float";
+	else if (a == Types::DRAWNING) return "drawning";
 	else if (a == Types::VOID) return "void";
 	else return "none";
 }
@@ -58,6 +59,7 @@ Types stt(std::string string)
 	else if (string == "integer" || string == "int") return Types::INTEGER;
 	else if (string == "float") return Types::FLOAT;
 	else if (string == "void") return Types::VOID;
+	else if (string == "drawning") return Types::DRAWNING;
 	else return Types::NONE;
 }
 
@@ -104,14 +106,13 @@ std::string Function::gstring()
 * 
 */
 
-Lexer::Lexer(std::string filePath)
-	:
-	file(filePath),in_func("", Variable(Types::NONE, "", ""),Types::NONE) { }
-Lexer::~Lexer() { file.close(); }
+Lexer::Lexer()
+	: in_func("", Variable(Types::NONE, "", ""),Types::NONE) { }
 
 
 std::string Lexer::getError() { return error_string; }
 int Lexer::getLine() { return error_line; }
+std::string Lexer::get_file() { return error_file; }
 
 bool Lexer::lexer_bool(std::string bool_segment)
 {
@@ -369,7 +370,7 @@ bool Lexer::lexer_return(std::string return_segment)
 
 bool Lexer::isThat_var_definition(std::string testsegment)
 {
-	return hmint(testsegment, "int")>0 || hmint(testsegment, "string")>0 || hmint(testsegment, "float")>0;
+	return hmint(testsegment, "int")>0 || hmint(testsegment, "string")>0 || hmint(testsegment, "float")>0 || hmint(testsegment,"drawning")>0;
 }
 
 bool Lexer::lexer_var_definition(std::string var_segment)
@@ -378,6 +379,7 @@ bool Lexer::lexer_var_definition(std::string var_segment)
 	if (keyCodeC(var_segment, "int ")) { y = true; st = 4; t = Types::INTEGER; }
 	else if (keyCodeC(var_segment, "string ")) { y = true; st = 7; t = Types::STRING; }
 	else if (keyCodeC(var_segment, "float ")) { y = true; st = 6; t = Types::FLOAT; }
+	else if (keyCodeC(var_segment, "drawning ")) { y = true; st = 9; t = Types::DRAWNING; }
 	int parsing = 0; std::string varname = ""; std::string value = ""; bool not_take = false;
 
 	for (int i = st; i < var_segment.size(); i++)
@@ -459,11 +461,30 @@ bool Lexer::lexer_compiler_command(std::string command_segment)
 	return false;
 }
 
+bool Lexer::lexer_load(std::string c)
+{
+	std::string path = "";
+	for (int i = 5; i < c.size(); i++)
+	{
+		path += c[i];
+	}
+
+	std::fstream control_file(path);
+	if (!control_file.is_open())
+	{
+		error_string = "Can't open " + path;
+		return false;
+	}
+
+	return lexer(path);
+}
+
 bool Lexer::lexer_line(std::string line_string)
 {
 	if (keyCodeC(line_string, "//") || keyCodeC(line_string, "empty") || line_string == "") return true;
 	else if (keyCodeC(line_string, "#lexer")) return lexer_command(line_string);
 	else if (keyCodeC(line_string, "#compiler")) return lexer_compiler_command(line_string);
+	else if (keyCodeC(line_string, "load")) return lexer_load(line_string);
 	else if (keyCodeC(line_string, "extern") || keyCodeC(line_string, " extern")) return lexer_extern(line_string);
 	else if (hmint(line_string, ";") > 0 && hmint(line_string, "extern ") == 0 && !isThat_func_definition(line_string)) { for (auto a : cut(line_string, ";")) if (!lexer_line(a)) return false; return true; }
 	else if (keyCodeC(line_string, "if")) return lexer_if(gat(line_string, 2));
@@ -475,14 +496,15 @@ bool Lexer::lexer_line(std::string line_string)
 	else { error_string = "That command is unknown: " + line_string; return false; }
 }
 
-bool Lexer::lexer()
+bool Lexer::lexer(std::string file_path)
 {
+	std::fstream file(file_path);
 	std::string line_string; int lineCounter = 0;
 	while (std::getline(file, line_string))
 	{
 		lineCounter++;
 		std::vector<Variable> n; inFunc_vars = n; in_func = Function("", Variable(Types::NONE, "", ""),Types::NONE);
-		if (!lexer_line(line_string)) { error_line = lineCounter; return false; }
+		if (!lexer_line(line_string)) { error_line = lineCounter; error_file = file_path; return false; }
 	}
 	return true;
 }
