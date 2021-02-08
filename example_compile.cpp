@@ -1,3 +1,0 @@
-#include "iostream"
-#include "SFML/Graphics.h"
-class Drawer {public: sf::RenderWindow window; void draw(sf::Sprite spr){window.draw(spr);window.display();} void clear(sf::Color color){window.clear(color);} }Display; using namespace std; void print(string thing){std::cout << thing; }void printi (int thing){std::cout << thing; }void printf(string thing){std::cout << thing << std::endl; }void printfi(int thing){std::cout << thing << std::endl; }void endl(){std::cout << std::endl; }std::string s;void getch(){std::cin >> s; }void inc(int &num){num++; }void plus(int &num,int in){num+=in; }/* loaded mc_main.mc here */int main(){sf::Sprite  circle;while (true){ Display.draw(circle);Display.clear();}}
