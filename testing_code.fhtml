@@ -1,0 +1,14 @@
+var counter = 0;
+counter.add_one() -> 
+{
+var text = "selam hggg";
+};
+
+title {text_type="h1";} -> {
+var text = "Welcome to FHTML";
+};
+
+title.on_click() -> 
+{
+text = ""
+};
