@@ -1,4 +1,5 @@
 #include "Lexer/Lexer.h"
+#include "Compiler/Compiler.h"
 #include "emils_lib-main/emils_lib.h"
 
 void var_printer(var v, int counter = 0, std::string start_string="")
@@ -21,7 +22,10 @@ int main()
 	}
 	else
 	{
-
+		Compiler compiler;
+		compiler.compile("testing_code.fhtml");
+		for (LanObject o : compiler.objects) std::cout << o.getHTML() << std::endl;
+		compiler.save_html("index.html");
 	}
 	
 	return 0;

@@ -58,6 +58,21 @@ bool Lexer::is_that_privateFunctionDefine(std::string d)
 	return control_lotOChars("()->{}", d);
 }
 
+bool Lexer::is_that_summonFunction(std::string string)
+{
+	bool req = false;
+	for (var v : variables)
+	{
+		for (auto f : v.priv_funcs)
+		{
+			if (is_starting_with(string, v.name + "." + f.name, 0)) req = true;
+		}
+	}
+	if (!req) return false;
+
+	return !control_lotOChars("()->{}", string) && control_lotOChars("()->{}", string);
+}
+
 bool Lexer::is_that_setVariable(std::string d)
 {
 	bool starting = false;
@@ -74,6 +89,7 @@ Lexer::line_type Lexer::get_lineType(std::string line)
 	else if (Lexer::is_starting_with("function", line, LB::get_textStarting(line))) return Lexer::line_type::FUNCTION_DEFINE;
 	else if (is_that_objectDefine(line)) return Lexer::line_type::OBJECT_DEFINE;
 	else if (is_that_privateFunctionDefine(line)) return Lexer::line_type::FUNCTION_PRIVATE_DEFINE;
+	else if (is_that_summonFunction(line)) return Lexer::line_type::FUNCTION_SUMMON;
 	else if (is_that_setVariable(line)) return Lexer::line_type::VARIABLE_SET;
 
 	else return Lexer::line_type::NOT_DETECTED;
@@ -158,7 +174,10 @@ std::vector<ordered_error> Lexer::lex_privateFunction(std::string d)
 	for (; i < d.size(); i++)
 		if (d[i] == '(') break;
 		else func.name += d[i];
-
+	i++;
+	for (; i < d.size(); i++)
+		if (d[i] == ')') break;
+		else func.param += d[i];
 	i = control_lotOCharsI(")->{", d)+1;
 
 	for (; i < d.size(); i++)
@@ -172,6 +191,22 @@ std::vector<ordered_error> Lexer::lex_privateFunction(std::string d)
 	v_variables = std::vector<var>();
 
 	return result;
+}
+
+std::vector<ordered_error> Lexer::lex_summonFunction(std::string line)
+{
+	int var_pos = 0, func_pos = 0;
+	for (int i = 0;i< variables.size();i++)
+	{
+		for (int j = 0;j< variables[j].priv_funcs.size();j++)
+		{
+			if (is_starting_with(line, variables[i].name + "." + variables[i].priv_funcs[j].name, 0))
+			{
+				var_pos = i; func_pos = j; break; break;
+			}
+		}
+	}
+	return std::vector<ordered_error>();
 }
 
 std::vector<ordered_error> Lexer::lex_css(std::string s)
@@ -227,6 +262,7 @@ std::vector<ordered_error> Lexer::lex_line(std::string line, bool virtual_v)
 		else if (type == Lexer::line_type::OBJECT_DEFINE) return lex_defineObject(line);
 		else if (type == Lexer::line_type::FUNCTION_DEFINE);
 		else if (type == Lexer::line_type::FUNCTION_PRIVATE_DEFINE) return lex_privateFunction(line);
+		else if (type == Lexer::line_type::FUNCTION_SUMMON) return lex_summonFunction(line);
 		else if (type == Lexer::line_type::EMPTY) return US::get_vector<ordered_error>();
 	}
 	else return US::get_vector<ordered_error>(error_type::TYPE_NOTDETECTED);

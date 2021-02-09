@@ -36,7 +36,7 @@ std::ostream& operator<<(std::ostream& s, var_type t);
 
 struct function
 {
-	std::string name, doing, style;
+	std::string name, doing, style, param;
 };
 
 struct var
@@ -51,7 +51,9 @@ class Lexer
 public:
 	std::vector<var> variables, v_variables; std::vector<ordered_error> errors;
 
-	enum class line_type { OBJECT_DEFINE, VARIABLE_DEFINE, VARIABLE_SET, FUNCTION_DEFINE, FUNCTION_PRIVATE_DEFINE, EMPTY, NOT_DETECTED };
+	enum class line_type { 
+		OBJECT_DEFINE, VARIABLE_DEFINE, VARIABLE_SET, FUNCTION_DEFINE, 
+		FUNCTION_PRIVATE_DEFINE, FUNCTION_SUMMON, EMPTY, NOT_DETECTED };
 
 	bool static is_starting_with(std::string this_string, std::string with_this_string, int start);
 
@@ -60,6 +62,7 @@ public:
 
 	bool static is_that_objectDefine(std::string string);
 	bool is_that_privateFunctionDefine(std::string string);
+	bool is_that_summonFunction(std::string string);
 	bool is_that_setVariable(std::string string);
 
 	line_type get_lineType(std::string string);
@@ -75,6 +78,7 @@ public:
 	std::vector<ordered_error> lex_setVariable(std::string line);
 	std::vector<ordered_error> lex_funcDoing(std::string top);
 	std::vector<ordered_error> lex_privateFunction(std::string line);
+	std::vector<ordered_error> lex_summonFunction(std::string line);
 	std::vector<ordered_error> lex_defineObject(std::string line);
 	std::vector<ordered_error> lex_line(std::string line,bool virtual_v);
 
