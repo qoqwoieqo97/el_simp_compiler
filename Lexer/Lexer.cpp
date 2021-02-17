@@ -1,284 +1,533 @@
 #include "Lexer.h"
-#include "../Tools/line_breaker.h"
-#include "../Tools/confirmer.h"
-#include "../Tools/usefully.h"
 
-std::ostream& operator<<(std::ostream&s, var_type t)
+bool Lexer::isStartingWith(std::string th, std::string wt)
 {
-	if (t == var_type::NUMBER) s << "Number";
-	else if (t == var_type::OBJECT) s << "Object";
-	else if (t == var_type::TEXT) s << "Text";
-	else if (t == var_type::NOT_DETECTED) s << "Not Detected";
-	else s << "?";
-	return s;
-}
-
-bool Lexer::is_starting_with(std::string t, std::string w, int start)
-{
-	for (int i = LB::get_textStarting(t,0); i < t.size() && i < w.size(); i++)
+	for (int i = 0; i < th.size() && i < wt.size(); i++)
 	{
-		if (t[i] != w[i+start]) return false;
+		if (th[i] != wt[i]) return false;
 	}return true;
 }
 
-bool Lexer::control_lotOChars(std::string chars, std::string c_string)
+int Lexer::isThatHave(std::string ts, char c)
 {
-	for (int i = 0,cI=0; i < chars.size(); i++)
-	{
-		if (cI >= c_string.size()) return false;
-		for (; cI < c_string.size(); cI++) if (c_string[cI] == chars[i]) break;
-	}
+	int counter = 0;
+	for (char ch : ts) if (ch == c) counter++; return counter;
+}
+
+bool Lexer::isEmpty(std::string t)
+{
+	for (char c : t) if (c != ' ' && c != '\t') return false;
 	return true;
 }
 
-int Lexer::control_lotOCharsI(std::string chars, std::string c_string)
+Strings Lexer::cut(std::string string, char cutC)
 {
-	int i = 0, cI = 0;
-	for (; i < chars.size(); i++)
+	Strings result;
+	std::string peach;
+	for (char c : string)
 	{
-		if (cI >= c_string.size()) return -1;
-		for (; cI < c_string.size(); cI++) if (c_string[cI] == chars[i]) break;
-	}
-	return cI;
-}
-
-bool Lexer::is_that_objectDefine(std::string d)
-{
-	bool c = control_lotOChars("{}->{}", d);
-	return c;
-}
-
-bool Lexer::is_that_privateFunctionDefine(std::string d)
-{
-	bool starting = false;
-	for (var v : variables) 
-		if (is_starting_with(d, v.name, 0)) starting = true;
-	if (!starting) return false;
-
-	return control_lotOChars("()->{}", d);
-}
-
-bool Lexer::is_that_summonFunction(std::string string)
-{
-	bool req = false;
-	for (var v : variables)
-	{
-		for (auto f : v.priv_funcs)
+		if (c == cutC)
 		{
-			if (is_starting_with(string, v.name + "." + f.name, 0)) req = true;
+			result.push_back(peach); peach = "";
 		}
-	}
-	if (!req) return false;
-
-	return !control_lotOChars("()->{}", string) && control_lotOChars("()->{}", string);
-}
-
-bool Lexer::is_that_setVariable(std::string d)
-{
-	bool starting = false;
-	for (var v : variables) if (is_starting_with(d, v.name, 0)) starting = true;
-	for (var v : v_variables) if (is_starting_with(d, v.name, 0)) starting = true;
-	if (!starting) return false;
-	return control_lotOChars("=", d);
-}
-
-Lexer::line_type Lexer::get_lineType(std::string line)
-{
-	if (CON::is_empty(line)) return Lexer::line_type::EMPTY;
-	else if (Lexer::is_starting_with("var", line, LB::get_textStarting(line))) return Lexer::line_type::VARIABLE_DEFINE;
-	else if (Lexer::is_starting_with("function", line, LB::get_textStarting(line))) return Lexer::line_type::FUNCTION_DEFINE;
-	else if (is_that_objectDefine(line)) return Lexer::line_type::OBJECT_DEFINE;
-	else if (is_that_privateFunctionDefine(line)) return Lexer::line_type::FUNCTION_PRIVATE_DEFINE;
-	else if (is_that_summonFunction(line)) return Lexer::line_type::FUNCTION_SUMMON;
-	else if (is_that_setVariable(line)) return Lexer::line_type::VARIABLE_SET;
-
-	else return Lexer::line_type::NOT_DETECTED;
-}
-
-var_type Lexer::detect_type(std::string v)
-{
-	if (v[0] == '"' && v[v.size() - 1] == '"') return var_type::TEXT;
-	else if (CON::is_int(v)) return var_type::NUMBER;
-	else return var_type::NOT_DETECTED;
-}
-
-
-
-std::vector<ordered_error> Lexer::lex_defineVariable(std::string line, bool virtual_v)
-{
-	std::string name = "", value = ""; int counter = 0;
-	for (int i = LB::get_textStarting(line,3); i < line.size(); i++)
-	{
-		if (counter == 0 && line[i] != ' ') name += line[i];
-		else if (counter == 0 && line[i] == ' ')
-		{
-			i = LB::get_textStarting(line, i);
-			if (line[i] != '=') return US::get_vector<ordered_error>(error_type::VAR_AFTERVARNAME_NOTDETECTED);
-			i = LB::get_textStarting(line, i+1)-1;
-			counter++;
-		}
-
-		else if (counter == 1) value += line[i];
-	}
-	if (counter == 1 && LB::isEmpty(value)) return US::get_vector<ordered_error>(error_type::VAR_VALUE_EMPTY);
-
-	var_type type = detect_type(value);
-
-	if (type == var_type::NOT_DETECTED) return US::get_vector<ordered_error>(error_type::VAR_VALUETYPE_UNDEFINED);
-	if(virtual_v) v_variables.push_back(var(name, type));
-	else variables.push_back(var(name, type));
-
-	return US::get_vector<ordered_error>();
-}
-
-std::vector<ordered_error> Lexer::lex_setVariable(std::string d)
-{
-	std::string value;
-
-	int i = 0;
-	for (;; i++)
-	{
-		if (i >= d.size()) return US::get_vector<ordered_error>(error_type::VAR_AFTERVARNAME_NOTDETECTED);
-		else if (d[i] == '=') break;
-	}
-
-	i = LB::get_textStarting(d, i + 1);
-	for (; i < d.size(); i++) value += d[i];
-	if (Lexer::detect_type(value) != var_type::NOT_DETECTED) return US::get_vector<ordered_error>();
-	else return US::get_vector<ordered_error>(error_type::TYPE_NOTDETECTED);
-}
-
-std::vector<ordered_error> Lexer::lex_funcDoing(std::string top)
-{
-	std::vector<std::string> lines = LB::line_breaker(top);
-	std::vector<ordered_error> result;
-	for (std::string line : lines)
-	{
-		std::vector<ordered_error> er = lex_line(line,true);
-		result.insert(result.end(), er.begin(), er.end());
-	}
+		else peach += c;
+	} result.push_back(peach);
 	return result;
 }
 
-std::vector<ordered_error> Lexer::lex_privateFunction(std::string d)
+Strings Lexer::cut(std::string string, char cutC, std::string wThis)
 {
-	function func;
-	int f_Start = 0, variable_pos = 0;
-	for (int i = 0; i < variables.size(); i++)
-		if (is_starting_with(d, variables[i].name, 0)) { f_Start = variables[i].name.size(); variable_pos = i; break; }
-
-	if (d[f_Start] != '.') return US::get_vector<ordered_error>(error_type::SYNTAX_ERROR);
-
-	int i = f_Start + 1;
-
-	for (; i < d.size(); i++)
-		if (d[i] == '(') break;
-		else func.name += d[i];
-	i++;
-	for (; i < d.size(); i++)
-		if (d[i] == ')') break;
-		else func.param += d[i];
-	i = control_lotOCharsI(")->{", d)+1;
-
-	for (; i < d.size(); i++)
-		if (d[i] == '}') break;
-		else func.doing += d[i];
-	
-	variables[variable_pos].priv_funcs.push_back(func);
-	v_variables = variables[variable_pos].in_vars;
-	std::vector<ordered_error> result = lex_funcDoing(func.doing);
-	variables[variable_pos].in_vars = v_variables;
-	v_variables = std::vector<var>();
-
-	return result;
-}
-
-std::vector<ordered_error> Lexer::lex_summonFunction(std::string line)
-{
-	int var_pos = 0, func_pos = 0;
-	for (int i = 0;i< variables.size();i++)
+	auto isThereAny = [](std::vector<bool> controlling)
 	{
-		for (int j = 0;j< variables[j].priv_funcs.size();j++)
+		for (int i = 0; i < controlling.size(); i++) if (controlling[i]) return true;
+		return false;
+	};
+
+	Strings result;
+	std::string peach;
+	std::vector<bool> b; for (int i = 0; i < wThis.size(); i++) b.push_back(false);
+
+	for (char c : string)
+	{
+		for (int i = 0; i < wThis.size(); i++) if (c == wThis[i]) b[i] = !b[i];
+		if (c == cutC)
 		{
-			if (is_starting_with(line, variables[i].name + "." + variables[i].priv_funcs[j].name, 0))
+			if (!isThereAny(b))
 			{
-				var_pos = i; func_pos = j; break; break;
+				result.push_back(peach); peach = "";
+			}
+			else peach += c;
+		}
+		else peach += c;
+	} result.push_back(peach);
+	return result;
+}
+
+int Lexer::getInfo(Strings strings, int info)
+{
+	if (info == LEXER_EMPTYCOUNT)
+	{
+		int counter = 0;
+		for (std::string string : strings)
+			if (isEmpty(string)) counter++;
+		return counter;
+	}
+	else if (info == LEXER_FILLEDCOUNT)
+	{
+		int counter = 0;
+		for (std::string string : strings)
+			if (!isEmpty(string)) counter++;
+		return counter;
+	}
+	else return -1;
+}
+
+std::string Lexer::getWithNotEmpty(std::string str)
+{
+	std::string res;
+	for (int i = 0; i < str.size(); i++)
+	{
+		if (str[i] != ' ' && str[i] != '\t')res += str[i];
+	}return res;
+}
+
+int Lexer::getStringStarting(std::string str, int strt)
+{
+	for (int i = strt; i < str.size(); i++)
+	{
+		if (str[i] != ' ' && str[i] != '\t') return i;
+	}
+	return str.size();
+}
+
+std::string Lexer::delStartEmpty(std::string str, int strt)
+{
+	std::string result;
+	for (int i = getStringStarting(str, strt); i < str.size(); i++)
+	{
+		result += str[i];
+	}return result;
+}
+
+std::string Lexer::getBetween(std::string str, char c1, char c2)
+{
+	bool t = false; std::string result;
+	for (int i = 0; i < str.size(); i++)
+	{
+		if (str[i] == c1) t = true;
+		else if (str[i] == c2) t = false;
+		else if (t) result += str[i];
+	}
+	return result;
+}
+
+/* Lexer */
+int Lexer::isStartingWithVar(std::string line, Values var)
+{
+	for (int i = 0; i < var.size(); i++)
+	{
+		if (isStartingWith(line, var[i].name)) return i; // Returning true array position
+	}return -1; // Or return -1 for not found
+}
+
+int Lexer::findVariable(std::string name, Values var)
+{
+	for (int i = 0; i < var.size(); i++)
+	{
+		if (var[i].name == name)return i;
+	}return -1; // Not found
+}
+
+Vector2i Lexer::findVariable(std::string name, DoubleValue double_vars)
+{
+	for (int i = 0; i < double_vars.size(); i++)
+	{
+		for (int j = 0; j < double_vars[i].size(); j++)
+		{
+			if (double_vars[i][j].name == name) return { i,j };
+		}
+	}
+	return { -1,-1 };
+}
+
+Types Lexer::values2types(Values v)
+{
+	Types result;
+	for (int i = 0; i < v.size(); i++)
+	{
+		result.push_back(v[i].type);
+	}return result;
+}
+
+Values Lexer::strings2values(Strings s)
+{
+	Values result;
+	for (std::string a : s) result.push_back({ Type::VAR, a, "", Values() });
+	return result;
+}
+
+Errors Lexer::setEmptyLines(Errors er, int line)
+{
+	for (int i = 0; i < er.size(); i++) if (er[i].line == -1) er[i].line = line;
+	return er;
+}
+
+Errors Lexer::addLines(Errors er, int add)
+{
+	for (int i = 0; i < er.size(); i++) er[i].line += add; return er;
+}
+
+bool Lexer::isNotError(Errors er)
+{
+	for (int i = 0; i < er.size(); i++)
+	{
+		if (er[i].error != "") return false;
+	}return true;
+}
+
+Errors Lexer::getErrors(Error er)
+{
+	RETVEC(Error, er);
+}
+
+std::string Lexer::reverse(std::string a)
+{
+	std::string result;
+	for (int i = a.size() - 1; i >= 0; i--)result += a[i]; return result;
+}
+
+std::string Lexer::removeStartEmpty(std::string a, int start)
+{
+	std::string result;
+	for (int i = getStringStarting(a, start); i < a.size(); i++) result += a[i]; return result;
+}
+
+std::string Lexer::removeStartAEndEmptys(std::string a)
+{
+	a = removeStartEmpty(a);
+	a = reverse(a); a = removeStartEmpty(a); return reverse(a);
+}
+
+Strings Lexer::removeAllStartAEndEmptys(Strings strings)
+{
+	for (int i = 0; i < strings.size(); i++)
+		strings[i] = removeStartAEndEmptys(strings[i]);
+	return strings;
+}
+
+LT Lexer::get_LineType(std::string line, Values var)
+{
+	if (isEmpty(line)) return LT::Empty; // Empty Lines
+	int starting_var = isStartingWithVar(line, var); // If not found that function will return -1
+	if (starting_var != -1)
+	{
+		if (line[var[starting_var].name.size()] == '.' && isStartingWith(line, "def"))// Controlling for private functions like button.onClick()
+			return LT::FuncDefine;
+		else if (isThatHave(line, '=') == 1)return LT::SetVariable;
+	}
+	else if (isStartingWith(line, "def"))// def key is importent for function defining. So just we need controlling def in start
+	{
+		return LT::FuncDefine;
+	}
+	else if (isThatHave(line, '=') == 1)// controlling variable = 5
+	{
+		return LT::VarDefine;
+	}
+	return LT::NotFound; // Lexer failed there
+}
+
+// Lexing function
+Lexer::PFVN Lexer::parse_functionName(std::string name)
+{
+	if (isThatHave(name, '.') == 1)
+	{
+		std::string var_name, func_name, parameter; int i = 4;
+		for (; i < name.size(); i++)
+			if (name[i] == '.') break;
+			else var_name += name[i];/* Getting variable name */ i++;
+		for (; i < name.size(); i++)
+			if (name[i] == ' ' || name[i] == '(') break;
+			else func_name += name[i]; /* Getting function name */ i++;
+		for (; i < name.size(); i++)
+			if (name[i] == ')') break;
+			else parameter += name[i]; /* Getting function parameters */ i++;
+		return PFVN(var_name, parameter, func_name, true); // return results
+	}
+	else if (isThatHave(name, '.') == 0)
+	{
+		std::string func_name, parameter; int i = 4;
+		for (; i < name.size(); i++)
+			if (name[i] == ' ' || name[i] == '(') break;
+			else func_name += name[i]; /* Getting function name */ i++;
+		for (; i < name.size(); i++)
+			if (name[i] == ')') break;
+			else parameter += name[i]; /* Getting function parameters */ i++;
+		return PFVN("", parameter, func_name, false); // return results
+	}
+	return PFVN("", "", "", false); // returning non private function for now
+}
+
+Lexer::PLR Lexer::lex_parameters(std::string param)
+{
+	Strings breaked = cut(param, ','); // Cutting parameters by ,
+	PLR res(Error(""), Strings()); // Result
+	for (std::string oneOBreaked : breaked)
+		// if like that = " para meter, param eter " give error
+		if (getInfo(cut(oneOBreaked, ' '), LEXER_FILLEDCOUNT) > 1) return PLR(Error("Parameter syntax error."), Strings());
+	// if not like = " parameter, parameter2 " add to res
+		else res.parameters.push_back(getWithNotEmpty(oneOBreaked));
+	return res;
+}
+
+int Lexer::work_inFunction(std::fstream* file, Values vals, Values params, Values& pValues, Errors& result)
+{
+	std::string nline; int skip_lines = 0;
+	while (std::getline(*file, nline))
+	{
+		skip_lines++;
+		nline = delStartEmpty(nline);
+		if (nline == "end") break;
+
+		LSAE ls = lex_line_private(nline, vals, params, pValues);
+		ls.err = addLines(ls.err, skip_lines);
+		result.insert(result.end(), ls.err.begin(), ls.err.end());
+		// Adding every errors to result variable
+		//for (int i = 0; i < ls.lineskip && std::getline(*file, nline); i++) skip_lines++;
+	}
+	return skip_lines;
+}
+
+Lexer::LSAE Lexer::lex_functionDefinition(std::fstream* file, std::string line, Values& var, Functions& funcs)
+{
+	Lexer::PFVN pfvn = parse_functionName(line); Errors result;
+
+	if (isThatHave(pfvn.name, ' ') || isThatHave(pfvn.function_name, ' '))
+		result.push_back(Error("Can't use ' ' (empty line) in name."));
+	else if (pfvn.function_name == "")
+	{
+		// Detecting error
+		if (isThatHave(line, '.') > 1) result.push_back(Error("There is too many dots"));
+	}
+
+	int location = findVariable(pfvn.name, var);// Var location
+	// if variable not found
+	if (location == -1 && pfvn.isThatHave)
+		result.push_back(Error(pfvn.function_name + "'s private variable " + pfvn.name + " not found."));
+
+	PLR parmRes = lex_parameters(pfvn.parameter); // Lexing parameters
+	if (parmRes.err.error != "") result.push_back(parmRes.err); // If error is not empty returning error
+
+	Values val_params = strings2values(parmRes.parameters); // Getting parameters for type Value
+
+	/* End for errors. Now Lexing function doings */
+
+	Values private_values = pfvn.isThatHave && location != -1 ? var[location].priv_values : Values(); // Getting private values
+	int skipped_lines = work_inFunction(file, var, val_params, private_values, result);
+
+	Types prmTypes = values2types(val_params); // Converting values to types for function define
+	if (result.size() > 0) return LSAE(result, skipped_lines); // If have errors we will dont add function
+
+	/* Adding functions */
+	if (pfvn.isThatHave && location != -1)
+	{
+		// Adding to private variable
+		var[location].priv_values = private_values;
+		var[location].private_funcs.push_back(Function(prmTypes, pfvn.function_name));
+	}
+	else
+	{
+		// Adding to public functions
+		funcs.push_back(Function(prmTypes, pfvn.function_name));
+	}
+	//END
+	return LSAE(result, skipped_lines);
+}
+
+// Lexing Var
+
+
+Lexer::LV Lexer::parse_varDefine(std::string var)
+{
+	Strings peachs = cut(var, '=');
+	LV result; result.variable_name = removeStartAEndEmptys(peachs[0]);
+	result.variable_value = removeStartAEndEmptys(peachs[1]);
+
+	// Name Error Detecting
+	{
+		int counter = 0;
+		Strings strs = cut(result.variable_name, ' ');
+		for (int i = 0; i < strs.size(); i++)
+		{
+			if (getWithNotEmpty(strs[i]) != "") counter++;
+		}if (counter > 1) result.errors.push_back(Error("Name parsed by ' ' characters."));
+	}
+
+	return result;
+}
+
+Type Lexer::detect_varType(std::string name)
+{
+	if (isStartingWith(name, "HTML")) return Type::HTML_OBJECT;
+	else return Type::VAR;
+}
+
+Lexer::SAE Lexer::getValue(std::string value, Values vals)
+{
+	Strings parsedByPlus = removeAllStartAEndEmptys(cut(value, '+', "\""));
+	std::string result; Errors errors;
+	for (int i = 0; i < parsedByPlus.size(); i++)
+	{
+		int ddCounter = isThatHave(parsedByPlus[i], '"');
+		if (ddCounter == 0)
+		{
+			int loc = findVariable(parsedByPlus[i], vals);
+			if (loc != -1) result += vals[loc].start_value;
+			else errors.push_back(Error("Variable " + parsedByPlus[i] + " not found."));
+		}
+		else if (ddCounter == 2)
+		{
+			for (int j = 1; j < parsedByPlus[i].size() - 1; j++)
+			{
+				result += parsedByPlus[i][j];
 			}
 		}
 	}
-	return std::vector<ordered_error>();
+	return { result ,errors };
 }
 
-std::vector<ordered_error> Lexer::lex_css(std::string s)
+Lexer::HCFR Lexer::construct_html(std::string start_value, Values vals)
 {
-	return US::get_vector<ordered_error>();
-}
-
-std::vector<ordered_error> Lexer::lex_defineObject(std::string d)
-{
-	std::vector<var> inVars; std::string doing, css, name;
-	int i = 0;
-	for (; i < d.size(); i++)
+	HCFR result;
+	std::string parameters = getBetween(start_value, '(', ')');
+	Strings parsed_pars = removeAllStartAEndEmptys(cut(parameters, ',', "\""));
+	std::vector<SAE> objects;
+	for (int i = 0; i < parsed_pars.size(); i++)
 	{
-		if (d[i] == ' ') { i++; break; }
-		else name += d[i];
+		SAE s = getValue(parsed_pars[i], vals);
+		objects.push_back(s);
+		if (s.errors.size() > 0)
+		{
+			result.errors.insert(result.errors.end(), s.errors.begin(), s.errors.end());
+		}
 	}
-	i = LB::get_textStarting(d, i);
-	if (d[i] != '{') return US::get_vector<ordered_error>(error_type::SYNTAX_ERROR);
-	i++;
-	for (; i < d.size(); i++)
+	if (objects.size() != 2) result.errors.push_back(Error("Constructor doesnt have 2 parameter"));
+	else
 	{
-		if (d[i] == '}') { i++; break; }
-		else css += d[i];
+		result.string = objects[0].string;
+		result.style = objects[1].string;
 	}
-	i = LB::get_textStarting(d, i);
-	if (d[i] != '-' || d[i + 1] != '>') return US::get_vector<ordered_error>(error_type::SYNTAX_ERROR);
-	i += 2;
-	i = LB::get_textStarting(d, i);
-	if(d[i]!='{') return US::get_vector<ordered_error>(error_type::SYNTAX_ERROR);
-	i++;
-	for (; i < d.size(); i++)
-	{
-		if (d[i] == '}') { i++; break; }
-		else doing += d[i];
-	}
-	std::vector<ordered_error> result = lex_funcDoing(doing);
-	inVars = v_variables; v_variables = std::vector<var>();
-	var variable(name, var_type::OBJECT);
-	variable.in_vars = inVars;
-	variables.push_back(variable);
 	return result;
 }
 
-
-
-std::vector<ordered_error> Lexer::lex_line(std::string line, bool virtual_v)
+Errors Lexer::lex_varDefine(std::string line, Values uv, Values& s1, Values& s2)
 {
-	Lexer::line_type type = get_lineType(line);
-	if (type != Lexer::line_type::NOT_DETECTED)
+	line = removeStartEmpty(line);
+	LV lexed_var = parse_varDefine(line); Type var_type = detect_varType(lexed_var.variable_value);
+	lexed_var.variable_name = removeStartAEndEmptys(lexed_var.variable_name);
+	Vector2i locationVector;
 	{
-		if (type == Lexer::line_type::VARIABLE_DEFINE) return lex_defineVariable(line, virtual_v);
-		else if (type == Lexer::line_type::VARIABLE_SET) return lex_setVariable(line);
-		else if (type == Lexer::line_type::OBJECT_DEFINE) return lex_defineObject(line);
-		else if (type == Lexer::line_type::FUNCTION_DEFINE);
-		else if (type == Lexer::line_type::FUNCTION_PRIVATE_DEFINE) return lex_privateFunction(line);
-		else if (type == Lexer::line_type::FUNCTION_SUMMON) return lex_summonFunction(line);
-		else if (type == Lexer::line_type::EMPTY) return US::get_vector<ordered_error>();
+		DoubleValue doubleValue;
+		//doubleValue.push_back(uv);
+		doubleValue.push_back(s1);
+		doubleValue.push_back(s2);
+		locationVector = findVariable(lexed_var.variable_name, doubleValue);
 	}
-	else return US::get_vector<ordered_error>(error_type::TYPE_NOTDETECTED);
 
-	return US::get_vector<ordered_error>(error_type::LEXER_FAILED);
+	//if (locationVector.x != -1)
+	//	if (locationVector.x == 0) lexed_var.errors.push_back(Error("You can't set out of function variable."));
+
+	if (var_type == Type::HTML_OBJECT)
+	{
+		Values all_values; all_values.insert(all_values.end(), s1.begin(), s1.end()); 
+		all_values.insert(all_values.end(), s2.begin(), s2.end());
+
+		HCFR constructed = construct_html(lexed_var.variable_value, all_values);
+		if (constructed.errors.size() > 0) return constructed.errors;
+		if (locationVector.x == 0) s1[locationVector.y].start_value = constructed.string;
+		else if (locationVector.x == 1) s2[locationVector.y].start_value = constructed.string;
+		else if (locationVector.x == -1)
+		{
+			Value val; val.name = lexed_var.variable_name;
+			val.start_value = constructed.string;
+			val.type = var_type;
+			s1.push_back(val);
+		}
+	}
+	else if (var_type == Type::VAR)
+	{
+		Values av;
+		av.insert(av.end(), uv.begin(), uv.end());
+		av.insert(av.end(), s1.begin(), s1.end());
+		av.insert(av.end(), s2.begin(), s2.end());
+		SAE compiled_string = getValue(lexed_var.variable_value, av);
+		if (compiled_string.errors.size() > 0) 
+			lexed_var.errors.insert(lexed_var.errors.end(), 
+				compiled_string.errors.begin(), compiled_string.errors.end());
+		else
+		{
+			std::string constructed_string = compiled_string.string;
+			if (locationVector.x == 0) s1[locationVector.y].start_value = constructed_string;
+			else if (locationVector.x == 1) s2[locationVector.y].start_value = constructed_string;
+			else if (locationVector.x == -1)
+			{
+				Value val; val.name = lexed_var.variable_name;
+				val.start_value = constructed_string;
+				val.type = var_type;
+				s1.push_back(val);
+			}
+		}
+	}
+
+	if (lexed_var.errors.size() > 0)return lexed_var.errors;
+	return Errors();
 }
 
-
-bool Lexer::lex_file(std::string file_path)
+Lexer::LSAE Lexer::lex_line(std::fstream* file, std::string line, Values& vars, Functions& funcs)
 {
-	bool is_thatError;
-	std::fstream file(file_path);
-	std::vector<std::string> lines = LB::line_breaker(LB::get_all(file));
-	for (std::string line : lines)
+	LT type = get_LineType(line, vars);
+	if (type == LT::NotFound) return LSAE(getErrors(Error("Lexer failed, line type not found.")), 0);
+	else if (type == LT::FuncDefine) return lex_functionDefinition(file, line, vars, funcs);
+	else if (type == LT::VarDefine || type == LT::SetVariable)
 	{
-		for (ordered_error o : lex_line(line, false))errors.push_back(o);
+		Values emptyVal;
+		return LSAE(lex_varDefine(line, Values(), vars, emptyVal), 0);
 	}
-	return errors.size() == 0;
+	else if (type == LT::Empty) return LSAE(Errors(), 0);
+	return LSAE(getErrors(Error("Lexer failed, line type found but line not lexed.")), 0);
+}
+
+Lexer::LSAE Lexer::lex_line_private(std::string line, Values vars, Values params, Values& priv_vals)
+{
+	LT type;
+	{
+		Values topVals = priv_vals; topVals.insert(topVals.end(), vars.begin(), vars.end());
+		type = get_LineType(line, topVals);
+	}
+	if (type == LT::NotFound) return LSAE(getErrors(Error("Lexer failed, line type not found dri.")), 0);
+	else if (type == LT::VarDefine || type == LT::SetVariable)
+		return LSAE(lex_varDefine(line, vars, priv_vals, params), 0);
+	else if(type ==LT::FuncDefine) return LSAE(getErrors(Error("You cant define a function in function.")), 0);
+	return LSAE(getErrors(Error("BRRRRRRRRRRUH")), 0);
+}
+
+Errors Lexer::lex_file(std::string file_path)
+{
+	// Opening file and creating std::string line for std::getline(string,string)
+	std::fstream file(file_path); std::string line; int line_Counter = 0;
+	// Result array for return
+	Errors result;
+	while (std::getline(file, line))
+	{
+		line_Counter++;
+		// Adding errors line by line
+		LSAE ls = lex_line(&file, line, vars, public_functions);
+		ls.err = addLines(ls.err, line_Counter + 1);
+		result.insert(result.end(), ls.err.begin(), ls.err.end());
+		if (ls.lineskip > 0)
+		{
+			line_Counter += ls.lineskip;
+		}
+	}
+	// Returning calculated errors
+	return result;
 }
