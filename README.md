@@ -63,10 +63,13 @@ Here the Example code and code's compile result
 ```python
 // setting title of page
 title = HTML("My Page")
+// Creating a text object
 justtext = HTML("Click 'Click Me' button")
+// Creating a button object
 button = HTML("Click Me")
+// Creating a onClick function. If any object have that function that object will be created as <a> or <button>
 button.onClick() :
- justtext="Hell yeah"
+ justtext="Hell yeah" // Setting justttext's text "Hell Yeah" if clicked that object
  end
 ```
 ### Result
