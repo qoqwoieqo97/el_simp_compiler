@@ -56,3 +56,32 @@ justtext.onCreate() :
   style = "backgorund-color:red; color:white;"
   end
 ```
+
+Here the Example code and code's compile result
+
+### Code
+```python
+// setting title of page
+title = HTML("My Page")
+justtext = HTML("Click 'Click Me' button")
+button = HTML("Click Me")
+button.onClick() :
+ justtext="Hell yeah"
+ end
+```
+### Result
+```html
+<HTML>
+ <head>
+  <title>My Page</title>
+  <script>
+   button_onClick()
+   {document.getElementById("button").text = "Hell Yeah";}
+  </script>
+ </head>
+ <body>
+  <p id="justtext">Click 'Click Me' button</p>
+  <a onclick="button_onClick()" id="button">Click Me</a>
+ </body>
+<HTML>
+```
