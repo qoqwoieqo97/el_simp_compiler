@@ -68,7 +68,7 @@ justtext = HTML("Click 'Click Me' button")
 // Creating a button object
 button = HTML("Click Me")
 // Creating a onClick function. If any object have that function that object will be created as <a> or <button>
-button.onClick() :
+def button.onClick() :
  justtext="Hell yeah" // Setting justttext's text "Hell Yeah" if clicked that object
  end
 ```
