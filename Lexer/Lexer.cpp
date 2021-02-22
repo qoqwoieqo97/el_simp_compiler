@@ -233,6 +233,7 @@ LT Lexer::get_LineType(std::string line, Values var)
 	{
 		return LT::VarDefine;
 	}
+	else if (isThatHave(line, '(') == 1 && isThatHave(line, ')') == 1)return LT::SummonFunc;
 	return LT::NotFound; // Lexer failed there
 }
 
@@ -477,10 +478,13 @@ Errors Lexer::lex_varDefine(std::string line, Values uv, Values& s1, Values& s2)
 			}
 		}
 	}
-
+	// Controlling some different errors
+	if (isThatHave(lexed_var.variable_value, '"') % 2 != 0)
+		lexed_var.errors.push_back(Error("One of the \" characters dont have partner."));
 	if (lexed_var.errors.size() > 0)return lexed_var.errors;
 	return Errors();
 }
+
 
 Lexer::LSAE Lexer::lex_line(std::fstream* file, std::string line, Values& vars, Functions& funcs)
 {

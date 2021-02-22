@@ -1,189 +1,114 @@
 #include "Compiler.h"
-#include "../Lexer/Lexer.h"
-
-std::string get_all(std::fstream& file)
+Compiler::Compiler(std::vector<ParsedLines> input)
 {
-	std::string result = "", line = "";
-	while (getline(file, line))
-	{
-		result += line;
-	}
-	return result;
+	lines = input; counter = 0;
 }
 
-std::vector<std::string> line_breaker(std::string string)
+void Compiler::CompileInFunc()
 {
-	std::vector<std::string> result;
-	std::string wll_add; int infunc = 0; bool in_text = false;
-	for (char c : string)
+	for (; counter < lines.size(); counter++)
 	{
-		if (infunc == 0 && !in_text)
+		if (lines[counter][0].types == ParseType::blank) 
 		{
-			if (c == '{') infunc++;
-			else if (c == '"') in_text = true;
-			else if (c == ';') { result.push_back(wll_add); wll_add = ""; continue; }
-		}
+			if (lines[counter][1].value == "end") break;
+		}else if (lines[counter][0].value == "end")break;
 		else
 		{
-			if (c == '{') infunc++;
-			else if (c == '}') infunc--;
-			else if (c == '"') in_text = false;
+			counter++;
+			CompileLine(lines[counter]);
 		}
-
-		wll_add += c;
-	}
-	result.push_back(wll_add);
-	return result;
-}
-
-bool itsw(std::string t, std::string wt)
-{
-	for (int i = 0; i < t.size() && i < wt.size(); i++) if (t[i] != wt[i]) return false; return true;
-}
-
-
-
-void Compiler::compile(std::string filePath)
-{
-	std::fstream file(filePath);
-	std::string allof = get_all(file);
-
-	for (std::string line : line_breaker(allof))
-	{
-		compile_line(line);
 	}
 }
 
-void Compiler::compile_line(std::string line)
+void Compiler::CompileFunc(ParsedLines line, int czn)
 {
-	if (Lexer::is_that_objectDefine(line)) compile_objectDefine(line);
-	else if (isThat_privateFunction(line)) compile_privateFunction(line);
-	else if (isThat_summonFunction(line)) compile_summonFunction(line);
-	else if (itsw("var", line)) compile_varDefining(line);
-}
-
-bool Compiler::isThat_privateFunction(std::string line)
-{
-	bool req = false;
-	for (LanObject ob : objects) if (itsw(line, ob.id)) req= true;
-	if(!req) return false;
-	return Lexer::control_lotOChars("()->{}",line);
-}
-
-bool Compiler::isThat_summonFunction(std::string line)
-{
-	bool req = false;
-	for (func ob : funcs) if (itsw(line, ob.name)) req = true;
-	if (!req) return false;
-	return Lexer::control_lotOChars("()", line);
-}
-
-void Compiler::compile_privateFunction(std::string line)
-{
-	std::string object_name, function_name, parameter, func_doing; int counter = 0;
-	for (int i = 0; i < line.size(); i++)
-	{
-		if (counter == 0 && line[i] == '.')counter++;
-		else if (counter == 0 && line[i] != ' ')object_name += line[i];
-
-		else if (counter == 1 && line[i] == '(')counter++;
-		else if (counter == 1 && line[i] != ' ')function_name += line[i];
-
-		else if (counter == 2 && line[i] == ')')counter++;
-		else if (counter == 2 && line[i] != ' ')parameter += line[i];
-
-		else if (counter == 3 && line[i] == '{')counter++;
-
-		else if (counter == 4 && line[i] == '}')counter++;
-		else if (counter == 4 && line[i] != ' ')func_doing += line[i];
+	czn++;
+	if (line[czn].types == ParseType::blank)czn++;
+	if (line[czn].types == ParseType::name) 
+	{ 
+		javascript += "function " + line[czn].value;
+		czn++;
 	}
-	compile_function(object_name, function_name, func_doing);
-}
-
-void Compiler::compile_function(std::string on, std::string fn, std::string fd)
-{
-	if (fn == "onClick")
+	if (line[czn].types == ParseType::supkeyDot)
 	{
-		for (int i = 0; i < objects.size(); i++)
+		javascript += "_";
+		czn++;
+		if (line[czn].types == ParseType::name)
 		{
-			std::cout << "Testing:" << objects[i].id <<" " << on << std::endl;
-			if (objects[i].id == on) objects[i].on_click = fd;
+			javascript += line[czn].value;
+			czn++;
 		}
 	}
-	else
+	if (line[czn].types == ParseType::supkeyOpenBracket)
 	{
-		general_script += "function " + on + "_" + fn + "(){" + fd + "} \n";
-		funcs.push_back({ on + "." + fn });
+		javascript += "(";
+		czn++;
+	}
+	while (true)
+	{
+		//Start of param
+		if (line[czn].types == ParseType::blank)czn++;
+		if (line[czn].types == ParseType::name)
+		{
+			javascript += line[czn].value;
+			czn++;
+		}
+
+		if (line[czn].types == ParseType::blank)czn++;
+		//Starting to new param
+		if (line[czn].types == ParseType::supkeyComo) 
+		{ 
+			javascript += ",";
+			czn++; 
+			continue; 
+		}
+		//Closing params
+		if (line[czn].types == ParseType::supkeyCloseBracket)
+		{
+			javascript += ")";
+			czn++; 
+			break;
+		}
+	}
+	if (line[czn].types == ParseType::blank)czn++;
+	if (line[czn].types == ParseType::supkeyEndDef)
+	{
+		javascript += "{";
+		counter++;
+		CompileInFunc();
+		javascript += "}";
 	}
 }
 
-void Compiler::compile_objectDefine(std::string line)
+void Compiler::CompileLine(ParsedLines line)
 {
-	std::string name, text, css;
-	int counter = 0;
-	for (int i = 0; i < line.size(); i++)
+	if (line.size() == 0)return;
+
+	int i = 0;
+	if (line[i].types == ParseType::blank) i++;
+
+	if (line[i].types == ParseType::name)
 	{
-		if (counter == 0 && line[i] == '{') counter++;
-		else if (counter == 0 && line[i] != ' ')name += line[i];
-
-		else if (counter == 1 && line[i] == '}') counter++;
-		else if (counter == 1 && line[i] != ' ') css += line[i];
-	}
-
-	LanObject obj; obj.type = HTML_Type::p; obj.id = name; obj.style = css;
-	objects.push_back(obj);
-}
-
-
-
-void Compiler::compile_varDefining(std::string line)
-{
-	std::string var_name, start_value;
-	int counter = 0;
-	for (int i = 3; i < line.size(); i++)
-	{
-		if (counter == 0 && line[i] == '=') counter++;
-		else if (counter == 0 && line[i] != ' ') var_name += line[i];
-		else if (counter == 1)start_value += line[i];
-	}
-	/* Compiling Var */
-	compile_var(var_name, start_value);
-}
-
-void Compiler::compile_summonFunction(std::string line)
-{
-	std::string result;
-	for (char c : line)
-	{
-		result += c == '.' ? '_' : c;
-	}
-	general_script += result;
-}
-
-void Compiler::compile_var(std::string name, std::string value)
-{
-	if (name == "text")
-	{
-		title = value;
-	}
-	else
-	{
-		general_script += "var " + name + " " + value + ";";
+		if (line[i].value == "def") CompileFunc(line, i);
 	}
 }
 
-void Compiler::save_html(std::string p)
+std::string Compiler::getFirstName(ParsedLines l)
 {
-	std::fstream file(p);
+	if (l[0].types == ParseType::blank) return l[1].value;
+	else return l[0].value;
+}
 
-	file << "<html>" << std::endl;
-	file << "<head><title>" << title << "</title>" << std::endl;
-	if(general_script!="") file << "<script>" << general_script << "</script>" << std::endl;
-	file << "</head>"<<std::endl;
-	file << "<body>" << std::endl;
-	for (LanObject obj : objects)
+void Compiler::Compile()
+{
+	for (;counter<lines.size();counter++)
 	{
-		file << obj.getHTML() << std::endl;
+		CompileLine(lines[counter]);
 	}
-	file << "</body></html>" << std::endl;
+}
+
+void Compiler::WriteToFile(std::string javascript_path)
+{
+ 	std::fstream file(javascript_path);
+	file << javascript;
 }

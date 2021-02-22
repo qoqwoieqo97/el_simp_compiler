@@ -32,7 +32,7 @@ struct Function { Types parameters; std::string name; Function(Types p, std::str
 struct Error { std::string error; int line; Error(std::string error_string, int ln = -1) { error = error_string; line = ln; } };
 struct Line { std::string line; unsigned int line_c; };
 
-enum class LineType { NotFound = 0, Empty, VarDefine, FuncDefine, SetVariable };
+enum class LineType { NotFound = 0, Empty, VarDefine, FuncDefine, SummonFunc, SetVariable };
 typedef LineType LT; // Shorter
 
 class Lexer
@@ -72,6 +72,12 @@ private:
 	{
 		std::string style, string; Errors errors;
 	}; typedef HTMLCreatorFunctionResult HCFR;
+
+	struct ParsedSummonFunction
+	{
+		std::string funcName, varName; bool isThatPrivate = false;
+		std::vector<std::string> params;
+	}; typedef ParsedSummonFunction PSF;
 
 public:
 	Values vars; Functions public_functions;
@@ -126,6 +132,7 @@ public:
 		// Constructing HTML
 		HCFR static construct_html(std::string start_value, Values vals);
 	Errors static lex_varDefine(std::string line, Values unchangableVar, Values& slot1, Values& slot2);
+
 
 	// Public Lexing
 	Lexer::LSAE static lex_line(std::fstream *file,std::string line, Values &vars, Functions &funcs);
