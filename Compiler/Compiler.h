@@ -1,6 +1,8 @@
 #pragma once
-#include "../Lexer/Lexer.h"
+#include <vector>
+#include <fstream>
 #include "../Parser/Parser.h"
+
 
 class Compiler
 {

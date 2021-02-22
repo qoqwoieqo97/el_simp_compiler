@@ -1,32 +1,45 @@
+#include <iostream>
 #include "Lexer/Lexer.h"
 #include "Compiler/Compiler.h"
-#include "emils_lib-main/emils_lib.h"
+#include "Parser/Parser.h"
 
-void var_printer(var v, int counter = 0, std::string start_string="")
+std::ostream& operator<<(std::ostream& s, ParseType t)
 {
-	std::cout << start_string << counter << ":" << v.name << ", " << v.type << std::endl;
-	for (var v1 : v.in_vars)
-	{
-		var_printer(v1, counter + 1,start_string+" ");
-	}
+	if (t == ParseType::blank) s << "Blank";
+	else if (t == ParseType::key) s << "Key";
+	else if (t == ParseType::name) s << "Name";
+	else if (t == ParseType::supkeyDot) s << "Supkey Dot";
+	else if (t == ParseType::supkeyOpenBracket) s << "Supkey Open Bracket";
+	else if (t == ParseType::supkeyCloseBracket) s << "Supkey Close Bracket";
+	else if (t == ParseType::supkeyEndDef) s << "Supkey End Def";
+	else if (t == ParseType::supkeyComo) s << "Supkey Como";
+	return s;
 }
-
 int main()
 {
-	Lexer lexer;
-	lexer.lex_file("testing_code.fhtml");
-	if (lexer.errors.size() > 0)
+	Parser par;
+	std::vector<ParsedLines> types = par.parse_file("testing_code.fhtml");
+
+	Lexer lexer(types);
+	Variable main_var;
+	/* Lexer dont founds error */
+	if(!lexer.Lex(&main_var))
 	{
-		for (ordered_error er : lexer.errors) std::cout << er.toString() << std::endl;
-		return -1;
+		Compiler comp(types);
+		comp.Compile();
+		comp.WriteToFile("javascriptresult.js");
 	}
+	/* Lexer founds error */
 	else
 	{
-		Compiler compiler;
-		compiler.compile("testing_code.fhtml");
-		for (LanObject o : compiler.objects) std::cout << o.getHTML() << std::endl;
-		compiler.save_html("index.html");
+		std::cout << "LEX_ERROR:" << std::endl;
+		const std::vector<Error> result = lexer.getErrors();
+		for (int i = 0; i < result.size(); i++)
+		{
+			std::cout << 
+				result[i].error << " in line: " << result[i].line 
+				<< std::endl;
+		}
 	}
-	
 	return 0;
 }

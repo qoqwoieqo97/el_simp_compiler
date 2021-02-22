@@ -1,28 +1,11 @@
-var counter = 0;
+title = HTML("My Page", "")
 
-var text = "Merhaba Dunya";
+justtext = HTML("Click 'Click Me' button","")
 
-counter.add_one() -> 
-{
-var text = "selam hggg";
-};
+button = HTML("Click Me", "")
 
+def button.onClick() :
+ justtext="Hell yeah"
+ end
 
-title {text_type="h1";} -> {
-var text = "Welcome to FHTML";
-};
-
-title.onClick() -> 
-{
-text = "";
-};
-
-click_me {color:white;} -> 
-{
-var text = "Click Me";
-};
-
-click_me.onClick()->
-{
-text = "NOOOOO";
-};
+button.onClick()

@@ -1,6 +1,8 @@
 #pragma once
+#include <vector>
 #include <iostream>
-#include "../Lexer/Lexer.h"
+#include <fstream>
+#include <string>
 
 #ifndef SUPKEY_BLANK_STYLE
 #define SUPKEY_BLANK_STYLE ' '
@@ -53,11 +55,6 @@ struct ParsedLine
 	std::string value;
 };
 typedef std::vector<ParsedLine> ParsedLines;
-
-struct ParsedFunction
-{
-	std::string name; Values parameters;
-};
 
 class Parser
 {
