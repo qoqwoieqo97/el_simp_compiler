@@ -8,13 +8,11 @@ void Compiler::CompileInFunc()
 {
 	for (; counter < lines.size(); counter++)
 	{
-		if (lines[counter][0].types == ParseType::blank) 
-		{
-			if (lines[counter][1].value == "end") break;
-		}else if (lines[counter][0].value == "end")break;
+		int in_lineCounter = 0;
+		if (lines[counter][in_lineCounter].types == ParseType::blank) in_lineCounter++;
+		if (lines[counter][in_lineCounter].value == "end")break;
 		else
 		{
-			counter++;
 			CompileLine(lines[counter]);
 		}
 	}

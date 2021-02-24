@@ -36,6 +36,22 @@
 #define SUPKEY_EQUAL_STYLE '='
 #endif
 
+#ifndef SUPKEY_MATH_PLUS_STYLE
+#define SUPKEY_MATH_PLUS_STYLE '+'
+#endif
+
+#ifndef SUPKEY_MATH_NEGAT_STYLE
+#define SUPKEY_MATH_NEGAT_STYLE '-'
+#endif
+
+#ifndef SUPKEY_MATH_MULTI_STYLE
+#define SUPKEY_MATH_MULTI_STYLE '*'
+#endif
+
+#ifndef SUPKEY_MATH_DIV_STYLE
+#define SUPKEY_MATH_DIV_STYLE '/'
+#endif
+
 enum class ParseType
 {
 	key,
@@ -47,6 +63,10 @@ enum class ParseType
 	supkeyComo,
 	supkeyTextInput,
 	supkeyEqual,
+	supkeyMathPlus,
+	supkeyMathNegat,
+	supkeyMathMulti,
+	supkeyMathDivis,
 	blank
 };
 struct ParsedLine

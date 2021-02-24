@@ -4,6 +4,14 @@
 #define TEMP_USE_MAYBE 0
 #define TEMP_USE_MUST 1
 
+#define GET_LINE line+1
+#define CONTROL_NEXT_F(lines,line,counter) if (lines[line].size() == counter) { errs.push_back({ "Required thing not here after '"+lines[line][counter-1].value+"'",GET_LINE }); return; }
+#define CONTROL_NEXT CONTROL_NEXT_F(lines,line,counter)
+#define CONTROL_NEXT_COUNTER {counter++;CONTROL_NEXT}
+
+#define R_CONTROL_NEXT_F(lines,line,counter) if (lines[line].size() != counter) { errs.push_back({ "This thing is not supposed to be here "+lines[line][counter-1].value,GET_LINE }); return; }
+#define R_CONTROL_NEXT R_CONTROL_NEXT_F(lines,line,counter)
+
 
 struct Function; 
 struct Variable;
@@ -41,6 +49,9 @@ public:
 
 	// Lexing line function
 		void Lex_functionDefine(Variable* var, int counter);
+		void Lex_varCalculation(Variable* var, int counter);
+		void Lex_summonFunction(Variable* var, int counter);
+		void Lex_afterdotCalculation(Variable* var, int counter);
 	void Lex_line(Variable* var);
 	// Main lexer function
 	bool Lex(Variable * var);
