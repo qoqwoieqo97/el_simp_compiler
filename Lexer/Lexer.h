@@ -8,6 +8,7 @@
 #define CONTROL_NEXT_F(lines,line,counter) if (lines[line].size() == counter) { errs.push_back({ "Required thing not here after '"+lines[line][counter-1].value+"'",GET_LINE }); return; }
 #define CONTROL_NEXT CONTROL_NEXT_F(lines,line,counter)
 #define CONTROL_NEXT_COUNTER {counter++;CONTROL_NEXT}
+#define CONTROL_SELECTED_COUNTER(c) CONTROL_NEXT_F(lines,line,c)
 
 #define R_CONTROL_NEXT_F(lines,line,counter) if (lines[line].size() != counter) { errs.push_back({ "This thing is not supposed to be here "+lines[line][counter-1].value,GET_LINE }); return; }
 #define R_CONTROL_NEXT R_CONTROL_NEXT_F(lines,line,counter)
