@@ -20,6 +20,22 @@ Lexer::Lexer(std::vector<ParsedLines> lns)
 	lines = lns; line = 0;
 }
 
+bool Lexer::skipBlank(int& counter)
+{
+	if (lines[line][counter].types == ParseType::blank)counter++;
+	if (lines[line].size() == counter)return false;
+	return true;
+}
+
+bool Lexer::control(int& counter)
+{
+	if (lines[line].size() == counter)
+	{
+		errs.push_back({ "Need something here. There is can't be end!",GET_LINE });
+		return false;
+	}return true;
+}
+
 void Lexer::Lex_functionDefine(Variable* var, int counter)
 {
 	// def <-- getted
@@ -100,6 +116,8 @@ void Lexer::Lex_functionDefine(Variable* var, int counter)
 	}
 }
 
+
+
 void Lexer::Lex_summonFunction(Variable* var, int counter)
 {
 	if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT; } /* Blank Skipper */
@@ -138,31 +156,86 @@ void Lexer::Lex_summonFunction(Variable* var, int counter)
 	}
 }
 
+bool Lexer::Lex_var(Variable* var, int& counter)
+{
+	if (lines[line][counter].types == ParseType::name)
+	{
+		{ counter++; }
+		if (lines[line].size() != counter)
+		{
+			skipBlank(counter); if (!control(counter))return false;
+			if (lines[line][counter].types == ParseType::supkeyOpenBracket) if (!Lex_inBrackets(var, counter)) return false;
+		}
+		else
+		{
+			errs.push_back({ "Bracket not closed.",GET_LINE }); return false;
+		}
+	}
+	else if (lines[line][counter].types == ParseType::supkeyTextInput)
+	{
+		{counter++; if (!control(counter)) { errs.push_back({ "Need something after SUPKEY_TEXTINPUT",GET_LINE }); return false; } }
+
+		if (lines[line][counter].types == ParseType::supkeyTextInput) { counter++;return true; }
+		else if (lines[line][counter].types != ParseType::name) { errs.push_back({ "At starting of text input, second thing is such a wtf?",GET_LINE }); }
+		else { counter++; if (!control(counter)) { errs.push_back({ "Need something after text input.", GET_LINE }); return false; } }
+
+		if (lines[line][counter].types != ParseType::supkeyTextInput) { errs.push_back({ "SUPKEY_TEXTINPUT should be closed", GET_LINE }); return false; }
+		{counter++; }
+	}
+	else { errs.push_back({ "First type is incorrect",GET_LINE }); return false; }
+	return true;
+}
+
+bool Lexer::Lex_inBrackets(Variable* var, int &counter)
+{
+	int bracket_counter=0;
+	counter++; if (!control(counter))return false;
+
+	if (lines[line][counter].types == ParseType::supkeyCloseBracket)return true;
+	else if (!Lex_var(var, counter)) return false;
+
+	while (lines[line].size() > counter)
+	{
+		if (!skipBlank(counter)) { errs.push_back({ "Need something after BLANK",GET_LINE }); return false; }
+		if (lines[line][counter].types == ParseType::supkeyMathPlus || lines[line][counter].types == ParseType::supkeyMathNegat ||
+			lines[line][counter].types == ParseType::supkeyMathDivis || lines[line][counter].types == ParseType::supkeyMathMulti ||
+			lines[line][counter].types == ParseType::supkeyComo)
+		{
+			counter++; if (!control(counter))return false;
+			if (!skipBlank(counter)) { errs.push_back({ "Need something after BLANK",GET_LINE }); return false; }
+			if (!Lex_var(var, counter)) return false;
+		}
+		else if (lines[line][counter].types == ParseType::supkeyCloseBracket) return true;
+	}
+
+	errs.push_back({ "Bracket not closed.",GET_LINE });
+	return false;
+}
+
 void Lexer::Lex_varCalculation(Variable* var, int counter)
 {
 	int bracket_counter = 0; bool text_input = false;
 	if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT; } /* Blank Skipper */
-	while (lines[line].size()!=counter)
+	
+	if (lines[line][counter].types == ParseType::name)
 	{
-		if (lines[line][counter].types == ParseType::name)
+		{ counter++; }
+		if (lines[line].size() != counter && lines[line][counter].types == ParseType::supkeyOpenBracket)
 		{
-			{ counter++; CONTROL_NEXT; }
-			if (lines[line].size() == counter)break;
-			else if (lines[line][counter].types == ParseType::supkeyMathPlus || lines[line][counter].types == ParseType::supkeyMathNegat ||
-				lines[line][counter].types == ParseType::supkeyMathMulti || lines[line][counter].types == ParseType::supkeyMathDivis)
-			{ counter++; CONTROL_NEXT; } // Should come something after math sign
+			/* Controlling in bracket */
+			if (!Lex_inBrackets(var, counter)) return;
 		}
-		else if (lines[line][counter].types == ParseType::supkeyTextInput)
-		{ 
-			// Do some text input system here
-		}
-		else if (lines[line][counter].types == ParseType::supkeyOpenBracket) { bracket_counter++; counter++; CONTROL_NEXT; }
-		else if (lines[line][counter].types == ParseType::supkeyCloseBracket)
-			if (bracket_counter == 0) { errs.push_back({ "You haven't got any brackets to close",GET_LINE }); return; }
-			else { bracket_counter--; counter++; }
-		else if (lines[line][counter].types == ParseType::supkeyComo) { counter++; CONTROL_NEXT; }
-		else { errs.push_back({ "Incorrect thing",GET_LINE }); return; }
-	}
+	}/* Getting name */
+	else if (lines[line][counter].types == ParseType::supkeyTextInput)
+	{
+		{ counter++; CONTROL_NEXT; }
+		if (lines[line][counter].types != ParseType::name) { errs.push_back({ "Stupid Error, After SUPKEY_TEXTINPUT should be NAME",GET_LINE }); return; }
+		else { counter++; CONTROL_NEXT; }
+		if (lines[line][counter].types != ParseType::supkeyTextInput) { errs.push_back({ "You should close SUPKEY_TEXTINPUT" ,GET_LINE }); return; }
+		else { counter++; }
+	}/* Controlling --> "smthnghr" */
+	else errs.push_back({ "Incorrect thing",GET_LINE });
+
 	if (bracket_counter > 0)errs.push_back({ "Bracket not closed",GET_LINE });
 }
 

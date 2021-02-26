@@ -13,6 +13,7 @@
 #define R_CONTROL_NEXT_F(lines,line,counter) if (lines[line].size() != counter) { errs.push_back({ "This thing is not supposed to be here "+lines[line][counter-1].value,GET_LINE }); return; }
 #define R_CONTROL_NEXT R_CONTROL_NEXT_F(lines,line,counter)
 
+#define SKIP_BLANK(c) if (lines[line][c].types == ParseType::blank) { c++; CONTROL_NEXT; }
 
 struct Function; 
 struct Variable;
@@ -48,8 +49,13 @@ private:
 public:
 	Lexer(std::vector<ParsedLines> lns);
 
+	bool skipBlank(int& counter);
+	bool control(int& counter);
+
 	// Lexing line function
 		void Lex_functionDefine(Variable* var, int counter);
+			bool Lex_var(Variable* var, int& counter);
+			bool Lex_inBrackets(Variable* var, int &counter);
 		void Lex_varCalculation(Variable* var, int counter);
 		void Lex_summonFunction(Variable* var, int counter);
 		void Lex_afterdotCalculation(Variable* var, int counter);
