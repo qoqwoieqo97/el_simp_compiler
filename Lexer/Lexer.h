@@ -15,6 +15,9 @@
 
 #define SKIP_BLANK(c) if (lines[line][c].types == ParseType::blank) { c++; CONTROL_NEXT; }
 
+#define ret_iftrue(thing,ret) if(thing) return ret
+#define blanskip_if(c) skipBlank(c); if (!control(c))
+
 struct Function; 
 struct Variable;
 
@@ -50,7 +53,9 @@ public:
 	Lexer(std::vector<ParsedLines> lns);
 
 	bool skipBlank(int& counter);
-	bool control(int& counter);
+	bool control(int& counter, bool not_write_to_errs=false);
+
+	bool test(ParseType type, int& counter, bool nwte=false);
 
 	// Lexing line function
 		void Lex_functionDefine(Variable* var, int counter);

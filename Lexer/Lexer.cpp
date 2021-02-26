@@ -23,17 +23,38 @@ Lexer::Lexer(std::vector<ParsedLines> lns)
 bool Lexer::skipBlank(int& counter)
 {
 	if (lines[line][counter].types == ParseType::blank)counter++;
-	if (lines[line].size() == counter)return false;
-	return true;
+	return control(counter, true);
 }
 
-bool Lexer::control(int& counter)
+bool Lexer::control(int& counter,bool nwte)
 {
 	if (lines[line].size() == counter)
 	{
-		errs.push_back({ "Need something here. There is can't be end!",GET_LINE });
+		if(!nwte) errs.push_back({ "Need something here. There is can't be end!",GET_LINE });
 		return false;
 	}return true;
+}
+
+
+bool Lexer::test(ParseType type, int&counter, bool nwte)
+{
+	if (!control(counter,true))
+	{
+		if(!nwte) errs.push_back({ "Controlling "+Parser::ptos(type)+" but next thing is not exist.",GET_LINE });
+		return false;
+	}
+	else
+	{
+		if (lines[line][counter].types == type)
+		{
+			return true;
+		}
+		else
+		{
+			if(!nwte) errs.push_back({ "Required type " + Parser::ptos(type) + " is not here.",GET_LINE });
+			return false;
+		}
+	}
 }
 
 void Lexer::Lex_functionDefine(Variable* var, int counter)
@@ -44,15 +65,15 @@ void Lexer::Lex_functionDefine(Variable* var, int counter)
 
 	{ counter++; CONTROL_NEXT }
 	/* Function Definition */
-	if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT } /* Blank Skipper */
+	blanskip_if(counter) return; /* Blank Skipper */
 	if (lines[line][counter].types == ParseType::name) // Getting -func-
 	{
 		counter++; CONTROL_NEXT
-			if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT } /* Blank Skipper */
+			blanskip_if(counter) return; /* Blank Skipper */
 		if (lines[line][counter].types == ParseType::supkeyDot) // Controlling -privFunc-
 		{
 			{ counter++; CONTROL_NEXT }
-			if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT } /* Blank Skipper */
+			blanskip_if(counter) return; /* Blank Skipper */
 			if (lines[line][counter].types == ParseType::name) { counter++; CONTROL_NEXT } // -privFunc-
 		}
 		if (lines[line][counter].types != ParseType::supkeyOpenBracket)
@@ -63,7 +84,7 @@ void Lexer::Lex_functionDefine(Variable* var, int counter)
 		else
 		{   // We getted Open Bracket sooo lets get parameters
 			{ counter++; CONTROL_NEXT }
-			if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT } /* Blank Skipper */
+			blanskip_if(counter) return; /* Blank Skipper */
 			if (lines[line][counter].types == ParseType::name)
 			{
 				{ counter++; CONTROL_NEXT }
@@ -101,7 +122,7 @@ void Lexer::Lex_functionDefine(Variable* var, int counter)
 			}
 
 			// Endf
-			if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT } /* Blank Skipper */
+			blanskip_if(counter) return; /* Blank Skipper */
 			if (lines[line][counter].types != ParseType::supkeyEndDef)
 			{
 				errs.push_back({ "Need SUPKEY_ENDEF at end of the function",GET_LINE }); // If can't found any of this
@@ -120,11 +141,11 @@ void Lexer::Lex_functionDefine(Variable* var, int counter)
 
 void Lexer::Lex_summonFunction(Variable* var, int counter)
 {
-	if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT; } /* Blank Skipper */
+	blanskip_if(counter) return; /* Blank Skipper */
 	if (lines[line][counter].types == ParseType::name) // func(parameter <---
 	{
 		{ counter++; CONTROL_NEXT; }
-		if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT; } /* Blank Skipper */
+		blanskip_if(counter) return; /* Blank Skipper */
 		while (true)
 		{
 			if (lines[line][counter].types == ParseType::supkeyComo)
@@ -147,9 +168,9 @@ void Lexer::Lex_summonFunction(Variable* var, int counter)
 			}
 		}
 	}
-	else if (lines[line][counter].types == ParseType::supkeyCloseBracket) // func() <--
+	else if (test(ParseType::supkeyCloseBracket, counter)) // func() <--
 	{
-		if (lines[line][counter].types == ParseType::blank) { counter++; } /* Blank Skipper */
+		blanskip_if(counter) return; /* Blank Skipper */
 		counter++;
 		if (lines[line].size() != counter) errs.push_back({ "After ')' character should be empty.",GET_LINE }); // func(...)        <--
 		return;
@@ -158,13 +179,13 @@ void Lexer::Lex_summonFunction(Variable* var, int counter)
 
 bool Lexer::Lex_var(Variable* var, int& counter)
 {
-	if (lines[line][counter].types == ParseType::name)
+	if (test(ParseType::name, counter,true))
 	{
 		{ counter++; }
-		if (lines[line].size() != counter)
+		if (control(counter,true))
 		{
 			skipBlank(counter); if (!control(counter))return false;
-			if (lines[line][counter].types == ParseType::supkeyOpenBracket) if (!Lex_inBrackets(var, counter)) return false;
+			if (test(ParseType::supkeyOpenBracket,counter)) if (!Lex_inBrackets(var, counter)) return false;
 		}
 		else
 		{
@@ -215,7 +236,7 @@ bool Lexer::Lex_inBrackets(Variable* var, int &counter)
 void Lexer::Lex_varCalculation(Variable* var, int counter)
 {
 	int bracket_counter = 0; bool text_input = false;
-	if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT; } /* Blank Skipper */
+	blanskip_if(counter) return; /* Blank Skipper */
 	
 	if (lines[line][counter].types == ParseType::name)
 	{
@@ -241,11 +262,11 @@ void Lexer::Lex_varCalculation(Variable* var, int counter)
 
 void Lexer::Lex_afterdotCalculation(Variable* var, int counter)
 {
-	if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT; } /* Blank Skipper */
+	blanskip_if(counter) return; /* Blank Skipper */
 	if (lines[line][counter].types == ParseType::name)
 	{
 		{ counter++; CONTROL_NEXT; }
-		if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT; } /* Blank Skipper */
+		blanskip_if(counter) return; /* Blank Skipper */
 		if (lines[line][counter].types == ParseType::supkeyOpenBracket)
 		{
 			{ counter++; CONTROL_NEXT; }
@@ -275,7 +296,7 @@ void Lexer::Lex_line(Variable* var)
 {
 	if (lines[line].size() == 0)return;
 	int counter = 0;
-	if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT; } /* Blank Skipper */
+	blanskip_if(counter) return; /* Blank Skipper */
 	if (lines[line][counter].types != ParseType::name) /* Controlling to be Name. If not we wll get err */
 		errs.push_back(Error({ "First thing should be text not " + lines[line][counter].value , GET_LINE }));
 	if (lines[line][counter].value == "def")
@@ -288,14 +309,14 @@ void Lexer::Lex_line(Variable* var)
 		counter++;
 		if (lines[line].size() != counter)
 		{
-			if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT; } /* Blank Skipper */
+			blanskip_if(counter) return; /* Blank Skipper */
 			if (lines[line].size() != counter) errs.push_back({ "END command not have any parameters",GET_LINE });
 		}
 	}
 	else
 	{
 		{ counter++; CONTROL_NEXT; }
-		if (lines[line][counter].types == ParseType::blank) { counter++; CONTROL_NEXT; } /* Blank Skipper */
+		blanskip_if(counter) return; /* Blank Skipper */
 		if (lines[line][counter].types == ParseType::supkeyEqual) /* Controlling set variable */
 		{
 			counter++; CONTROL_NEXT;
